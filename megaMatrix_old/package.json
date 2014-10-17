@@ -10,6 +10,7 @@
     "babyparse": "^0.2.1",
     "connect": "^3.2.0",
     "d3": "^3.4.12",
+    "express": "^4.9.7",
     "serve-static": "^1.6.4"
   },
   "devDependencies": {},
