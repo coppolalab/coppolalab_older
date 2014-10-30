@@ -1,7 +1,7 @@
 var Papa = require('babyparse')
 var fs = require("fs");
 
-fs.readFile('test.csv', {encoding: 'UTF-8'}, function (err, data) {
+fs.readFile('test1.csv', {encoding: 'UTF-8'}, function (err, data) {
 	if (err) throw err;
 	//console.log(data);
 

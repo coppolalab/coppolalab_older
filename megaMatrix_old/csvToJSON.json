@@ -1,24 +1,32 @@
 {
     "data": [
         {
-            "SNo.": "1",
-            "First Name": "Praphull",
-            "Last Name": "Kumar"
+            "": "Val1",
+            "a": "1",
+            "b": "2",
+            "c": "3",
+            "d": "4"
         },
         {
-            "SNo.": "2",
-            "First Name": "Revant",
-            "Last Name": "Kumar"
+            "": "Val2",
+            "a": "5",
+            "b": "6",
+            "c": "7",
+            "d": "8"
         },
         {
-            "SNo.": "3",
-            "First Name": "Rajendra",
-            "Last Name": "Agarwal"
+            "": "Val3",
+            "a": "0",
+            "b": "9",
+            "c": "8",
+            "d": "7"
         },
         {
-            "SNo.": "4",
-            "First Name": "Priti",
-            "Last Name": "Agarwal"
+            "": "Val4",
+            "a": "6",
+            "b": "5",
+            "c": "4",
+            "d": "3"
         }
     ],
     "errors": [],
@@ -27,9 +35,11 @@
         "delimiter": ",",
         "aborted": false,
         "fields": [
-            "SNo.",
-            "First Name",
-            "Last Name"
+            "",
+            "a",
+            "b",
+            "c",
+            "d"
         ]
     }
 }
