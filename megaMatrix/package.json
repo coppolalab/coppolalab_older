@@ -1,0 +1,21 @@
+{
+  "name": "megaMatrix",
+  "version": "1.0.0",
+  "description": "Mega Matrix for Dr. Coppola's Lab at UCLA.",
+  "main": "server.js",
+  "dependencies": {
+    "connect": "^3.3.2",
+    "serve-static": "^1.7.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node server.js",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "D3.js",
+    "MegaMatrix"
+  ],
+  "author": "\"Praphull Kumar\" <praphull27@gmail.com>",
+  "license": "ISC"
+}
