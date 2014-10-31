@@ -12,22 +12,32 @@
 		fill: none;
 		stroke: #fff;
 	}
+	button {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+}
 
 	</style>
 	<script src="http://d3js.org/d3.v3.js" charset="utf-8"></script>
 </head>
 <body>
+	<button onclick="reset()">Reset</button>
 	<script type="text/javascript">
 	d3.selection.prototype.moveToFront = function() {
 		return this.each(function() {
 			this.parentNode.appendChild(this);
 		});
 	};
-	var dataset, colNames, rowNames, svg;
-	var margin = {top: 0, right: 0, bottom: 15, left: 0};
-	var width = window.innerWidth * 0.985 - margin.left - margin.right;
-	var height = window.innerHeight * 0.97- margin.top - margin.bottom;
+	var dataset, colNames, rowNames, svg, zoom;
+	var margin = {top: 0, right: 0, bottom: 0, left: 0};
+	var width = window.innerWidth * 0.99 - margin.left - margin.right;
+	var height = window.innerHeight * 0.96- margin.top - margin.bottom;
 	var cellPadding = 1;
+	zoom = d3.behavior.zoom()
+						.scaleExtent([1, 100])
+						.on("zoom", zoom);
+
 	d3.json("outputJSON/output.json", function(matrix) {
 		dataset=[];
 		colNames = matrix.meta.fields;
@@ -56,10 +66,6 @@
 		// var yAxis = d3.svg.axis()
 		// 							.scale(y)
 		// 							.orient("left");
-
-		var zoom = d3.behavior.zoom()
-									.scaleExtent([1, 100])
-									.on("zoom", zoom);
 
 		svg = d3.select("body")
 		.append("svg")
@@ -105,16 +111,23 @@
 		// 	//.attr("transform", "translate(0,0)")
 		// 	.call(yAxis);
 
-		function zoom() {
-			svg.selectAll("rect")
-					.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-			// svg.select(".x.axis").attr("transform", "translate(" + d3.event.translate[0]+",0)")
-			// 		.call(xAxis.scale(x.rangePoints([0, width * d3.event.scale], d3.event.scale)));
-			// svg.select(".y.axis").attr("transform", "translate(0," + d3.event.translate[0]+")")
-			// 		.call(yAxis.scale(y.rangePoints([0, height * d3.event.scale], d3.event.scale)));
-		}
 	});
+	
+	function reset() {
+		zoom.scale(1);
+		zoom.translate([margin.left, margin.top]);
+		svg.selectAll("rect")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")scale(1)");
+	}
 
+	function zoom() {
+		svg.selectAll("rect")
+				.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+		// svg.select(".x.axis").attr("transform", "translate(" + d3.event.translate[0]+",0)")
+		// 		.call(xAxis.scale(x.rangePoints([0, width * d3.event.scale], d3.event.scale)));
+		// svg.select(".y.axis").attr("transform", "translate(0," + d3.event.translate[0]+")")
+		// 		.call(yAxis.scale(y.rangePoints([0, height * d3.event.scale], d3.event.scale)));
+	}
 
 	function getColorD3(value) {
 		if(value == -2)
