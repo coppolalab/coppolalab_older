@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "description": "Mega Matrix for Dr. Coppola's Lab at UCLA.",
   "main": "server.js",
-  "repository": { 
-    "type" : "git", 
-    "url" : "https://github.com/giovannicoppola/coppolalab.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/giovannicoppola/coppolalab.git"
   },
   "dependencies": {
     "babyparse": "^0.2.1",
     "connect": "^3.3.2",
+    "optimist": "^0.6.1",
     "serve-static": "^1.7.1"
   },
   "devDependencies": {},
