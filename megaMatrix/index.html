@@ -24,9 +24,9 @@
 		});
 	};
 	var dataset, colNames, rowNames, svg;
-	var margin = {top: 0, right: 0, bottom: 0, left: 0};
+	var margin = {top: 0, right: 0, bottom: 15, left: 0};
 	var width = window.innerWidth * 0.985 - margin.left - margin.right;
-	var height = window.innerHeight * 0.95- margin.top - margin.bottom;
+	var height = window.innerHeight * 0.97- margin.top - margin.bottom;
 	var cellPadding = 1;
 	d3.json("outputJSON/output.json", function(matrix) {
 		dataset=[];
