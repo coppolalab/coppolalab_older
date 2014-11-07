@@ -1,0 +1,18 @@
+svg {
+	font: 10px sans-serif;
+	shape-rendering: crispEdges;
+}
+.axis path, .axis line {
+	fill: none;
+	stroke: #fff;
+}
+button {
+	position: absolute;
+	right: 1px;
+	bottom: 1px;
+}
+text {
+	position: absolute;
+	left: 1px;
+	bottom: 1px;
+}
