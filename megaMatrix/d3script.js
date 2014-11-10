@@ -4,7 +4,7 @@ d3.selection.prototype.moveToFront = function() {
 	});
 };
 var dataset, colNames, rowNames, svg, zoom;
-var margin = {top: 20, right: 20, bottom: 20, left: 20};
+var margin = {top: 0, right: 0, bottom: 0, left: 0};
 var width = window.innerWidth * 0.95 - margin.left - margin.right;
 var height = window.innerHeight * 0.95- margin.top - margin.bottom;
 var cellPadding = 1;
@@ -74,7 +74,6 @@ d3.json("outputJSON/output.json", function(matrix) {
 			d3.select(this).style({"stroke-width":0});
 			d3.select("text").text("");
 		})
-
 	};
 
 	svg.append("g")
@@ -86,29 +85,36 @@ d3.json("outputJSON/output.json", function(matrix) {
 	.attr("class", "y axis")
 	.attr("transform", "translate(0,0)")
 	.call(yAxis);
-
 });
 
 function reset() {
 	zoom.scale(1);
 	zoom.translate([margin.left, margin.top]);
 	svg.selectAll("rect")
-	.attr("transform", "translate(" + margin.left + "," + margin.top + ")scale(1)");
+	.attr("transform", 
+		"translate(" + margin.left + "," + margin.top + ")scale(1)");
 }
 
 function zoom() {
 	svg.selectAll("rect")
-	.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-	svg.select(".x.axis").attr("transform", "translate(" + d3.event.translate[0]+",0)")
-	.call(xAxis.scale(x.rangePoints([0, width * d3.event.scale], d3.event.scale)));
-	svg.select(".y.axis").attr("transform", "translate(0," + d3.event.translate[0]+")")
-	.call(yAxis.scale(y.rangePoints([0, height * d3.event.scale], d3.event.scale)));
+	.attr("transform", 
+		"translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+
+	svg.select(".x.axis")
+	.attr("transform", "translate(" + d3.event.translate[0]+",0)")
+	.call(xAxis.scale(x.rangePoints([0, width * d3.event.scale], 
+		d3.event.scale)));
+
+	svg.select(".y.axis").attr("transform", 
+		"translate(0," + d3.event.translate[0]+")")
+	.call(yAxis.scale(y.rangePoints([0, height * d3.event.scale], 
+		d3.event.scale)));
 }
 
 function getColorD3(value) {
 	if(value == -2)
 		value = 0;
-if(checkFilterOutValue(value))   //if (value > -0.1 && value < 0.1 )
+if(checkFilterOutValue(value))    //if (value > -0.1 && value < 0.1 )
 	return "hsl(0,0%,93%)";
 var r=d3.scale.linear().domain([0,0.5]).range([10,360]);
 return "hsl("+ r(value) +",100%,50%)"	;
