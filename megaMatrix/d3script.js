@@ -3,7 +3,7 @@ d3.selection.prototype.moveToFront = function() {
 		this.parentNode.appendChild(this);
 	});
 };
-var dataset, colNames, rowNames, svg, zoom;
+var dataset, colNames, rowNames, svg, zoom, xAxis, yAxis, x, y;
 var margin = {top: 0, right: 0, bottom: 0, left: 0};
 var width = window.innerWidth * 0.95 - margin.left - margin.right;
 var height = window.innerHeight * 0.95- margin.top - margin.bottom;
@@ -25,19 +25,19 @@ d3.json("outputJSON/output.json", function(matrix) {
 		};
 	};
 
-	var x = d3.scale.ordinal()
+	x = d3.scale.ordinal()
 	.domain(colNames)
 	.rangePoints([0, width], 1);
 
-	var y = d3.scale.ordinal()
+	y = d3.scale.ordinal()
 	.domain(rowNames)
 	.rangePoints([0, height], 1);
 
-	var xAxis = d3.svg.axis()
+	xAxis = d3.svg.axis()
 	.scale(x)
 	.orient("top");
 
-	var yAxis = d3.svg.axis()
+	yAxis = d3.svg.axis()
 	.scale(y)
 	.orient("left");
 
@@ -51,6 +51,7 @@ d3.json("outputJSON/output.json", function(matrix) {
 	.append("g");
 
 	var rect = svg.selectAll("rect");
+	var text = svg.selectAll("text");
 
 	for (var j = 0; j < dataset.length; j++) {
 		rect.data(dataset[j])
@@ -67,13 +68,24 @@ d3.json("outputJSON/output.json", function(matrix) {
 		})
 		.on('mouseover', function(d,i) {
 			d3.select(this).style({"stroke":"red","stroke-width":1});
-			d3.select(this).moveToFront();
+			//d3.select(this).moveToFront();
 			d3.select("text").text(j + " -- " + colNames[i] + " -- " + d);
 		})
 		.on('mouseout', function(d,i) {
 			d3.select(this).style({"stroke-width":0});
 			d3.select("text").text("");
+		});
+
+		text.data(dataset[j])
+		.enter()
+		.append("text")
+		.attr("x", function(d, i) {
+			return i * (width / dataset[j].length);
 		})
+		.attr("y", j * (height / dataset.length))
+		.style("font-size", 1)
+		.attr("dy", 2)
+		.text(function(d) { return d; });
 	};
 
 	svg.append("g")
@@ -97,6 +109,9 @@ function reset() {
 
 function zoom() {
 	svg.selectAll("rect")
+	.attr("transform", 
+		"translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+	svg.selectAll("text")
 	.attr("transform", 
 		"translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
 
