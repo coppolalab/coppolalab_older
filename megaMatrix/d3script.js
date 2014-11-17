@@ -42,7 +42,7 @@ d3.json("outputJSON/output.json", function(error, data) {
         cellcover.selectAll("rect").attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
         cellcover.selectAll(".cell-text").attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
 
-        if (d3.event.scale > 10) {
+        if (d3.event.scale > 5) {
             cellcover.selectAll(".cell-text").classed({
                 'cell-text-disable': false,
                 'cell-text-active': true
