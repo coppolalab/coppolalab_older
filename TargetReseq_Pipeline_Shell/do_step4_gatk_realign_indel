@@ -1,0 +1,33 @@
+#!/bin/bash
+#$ -S /bin/sh
+#$ -l h_data=10G,h_rt=10:00:00
+
+
+time1=$( date "+%s" )
+
+echo [Directory] `pwd`
+echo [Machine] `uname -n`
+echo [Start] `date`
+echo [args] $*
+
+export PATH=/share/apps/samtools-1.1/bin:$PATH
+
+output_dir=$1
+s=$2
+ref=/coppolalabshares/marisaprj01/Takeda/Pipeline/reference/human_g1k_v37.no_unlocalized_contigs.fasta
+vcf=/coppolalabshares/marisaprj01/Takeda/Pipeline/dbSNP/dbsnp_138.b37.vcf
+
+
+echo "Running:"
+echo "gatk realign indel"
+
+
+java -Xmx4g -Xms2g -Djava.io.tmpdir=/home/yqin/201505_ExomeSeq/tmp -jar /home/yqin/bin/GenomeAnalysisTK.jar -o $output_dir/$s.aln.dedup.realn.bam -I $output_dir/$s.aln.dedup.bam -T IndelRealigner -R $ref -known $vcf --targetIntervals $output_dir/$s.realn.intervals.list
+
+samtools index $output_dir/$s.aln.dedup.realn.bam
+
+
+
+time2=$( date "+%s" )
+echo [deltat] $(( $time2 - $time1 ))
+echo [End] `date`
