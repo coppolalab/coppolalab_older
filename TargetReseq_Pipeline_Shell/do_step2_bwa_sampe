@@ -1,0 +1,45 @@
+#!/bin/bash
+#$ -S /bin/sh
+#$ -l h_data=20G,h_rt=10:00:00
+
+
+time1=$( date "+%s" )
+
+echo [Directory] `pwd`
+echo [Machine] `uname -n`
+echo [Start] `date`
+echo [args] $*
+
+
+export PATH=/share/apps/bwa-0.7.12:$PATH
+export PATH=/home/yqin/bin/picard-tools-1.130:$PATH
+export PATH=/share/apps/samtools-1.1/bin:$PATH
+
+sai_input_1=$1
+sai_input_2=$2
+fastq_input_1=$3
+fastq_input_2=$4
+output_dir=$5
+s=$6
+ref=/coppolalabshares/marisaprj01/Takeda/Pipeline/reference/human_g1k_v37.no_unlocalized_contigs.fasta
+
+
+echo "Running:"
+echo "bwa sampe"
+
+bwa sampe -r "@RG\tID:$s"_rg"\tPL:ILLUMINA\tPU:Unknown\tLB:Unknown\tSM:$s" $ref $sai_input_1 $sai_input_2 $fastq_input_1 $fastq_input_2 > $output_dir/$s.bam
+
+java -Xmx8g -Xms6g -Djava.io.tmpdir=/home/yqin/201505_ExomeSeq/tmp -jar /home/yqin/bin/picard-tools-1.130/picard.jar SortSam I=$output_dir/$s.bam O=$output_dir/$s.sorted.bam VALIDATION_STRINGENCY=LENIENT SO=coordinate 
+
+samtools index $output_dir/$s.sorted.bam
+
+rm $output_dir/$s.bam
+
+java -Xmx4g -Xms2g -Djava.io.tmpdir=/home/yqin/201505_ExomeSeq/tmp -jar /home/yqin/bin/picard-tools-1.130/picard.jar MarkDuplicates  I=$output_dir/$s.sorted.bam O=$output_dir/$s.aln.dedup.bam VALIDATION_STRINGENCY=LENIENT M=$output_dir/$s.aln.dedup.bam.dup_metrics
+
+samtools index $output_dir/$s.aln.dedup.bam
+
+
+time2=$( date "+%s" )
+echo [deltat] $(( $time2 - $time1 ))
+echo [End] `date`
