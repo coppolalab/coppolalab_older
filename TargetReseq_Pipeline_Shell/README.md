@@ -1,4 +1,4 @@
-Target Resequencing Pipeline
+## Target Resequencing Pipeline
 
 1. in Bash Shell script instead of Python
 
