@@ -2,7 +2,8 @@
 #
 #          FILE:  align_and_call_targeted.py
 #
-#         USAGE:  python AlignCallTarget.py --pname Proj --memlimit 4 sample_digest_file outfolder tmp_outvcf human_g1k_v37.no_unlocalized_contigs.fasta dbsnp_138.b37.vcf 2014.Takeda.new.intervals
+#         USAGE: #put align_and_call_targeted.py and /coplab in the same fold and run python  
+#                 python AlignCallTarget.py --pname Proj --memlimit 4 sample_digest_file outfolder tmp_outvcf human_g1k_v37.no_unlocalized_contigs.fasta dbsnp_138.b37.vcf 2014.Takeda.new.intervals
 #
 #   DESCRIPTION: 
 #
