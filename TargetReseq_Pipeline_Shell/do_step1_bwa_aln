@@ -1,0 +1,34 @@
+#!/bin/bash
+#$ -S /bin/sh
+#$ -l h_data=10G,h_rt=10:00:00
+
+
+time1=$( date "+%s" )
+
+echo [Directory] `pwd`
+echo [Machine] `uname -n`
+echo [Start] `date`
+echo [args] $*
+
+
+export PATH=/share/apps/bwa-0.7.12:$PATH
+
+
+bwa_input=$1
+output_dir=$2
+outfile=$3
+ref=/coppolalabshares/marisaprj01/Takeda/Pipeline/reference/human_g1k_v37.no_unlocalized_contigs.fasta
+if [ -z $bwa_input ] || [ -z $output_dir ] || [ -z $outfile ]
+then
+        echo "Missing parameters...."
+        exit 255
+fi
+
+echo "Running:"
+echo "bwa aln"
+bwa aln $ref $bwa_input > $output_dir/$outfile.sai
+
+
+time2=$( date "+%s" )
+echo [deltat] $(( $time2 - $time1 ))
+echo [End] `date`
