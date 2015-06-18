@@ -1,0 +1,52 @@
+#===============================================================================
+#
+#          FILE:  step5_gatk_haplotypecaller
+#         USAGE:  ./step5_gatk_haplotypecaller digest_fastq_file exe_folder
+#   DESCRIPTION: 
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Yue Qin, YQin@mednet.ucla.edu
+#       COMPANY: ICNN, UCLA
+#       CREATED:  ---
+#      REVISION: 06/10/2015
+#
+#===============================================================================
+
+#!/bin/bash
+
+fastq_digest=$1
+step=step5_gatk_haplotypecaller
+exe=do_step5_gatk_haplotypecaller
+F=$2
+
+while read line
+
+do
+
+        s=`echo $line | awk -F' ' '{print $1}'`
+
+        outdir=$F/results/$s/Out
+        logdir=$F/results/$s/Log
+        jobdir=$F/results/$s/Job
+	
+	job=$jobdir/$step.$s.job
+	
+	
+
+        if [ -e $job ]; then
+                echo "$job already exists"
+
+        else
+			
+		sleep 2
+                qsub -e $logdir -o $logdir -N $step -R y $F/$exe $outdir $s > $job
+             
+                cat $job
+		
+        fi
+
+
+
+done < $fastq_digest
