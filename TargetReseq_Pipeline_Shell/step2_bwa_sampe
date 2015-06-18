@@ -1,0 +1,58 @@
+#===============================================================================
+#
+#          FILE:  step2_bwa_sampe
+#         USAGE:  ./step2_bwa_sampe digest_fastq_file exe_folder
+#   DESCRIPTION: 
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Yue Qin, YQin@mednet.ucla.edu
+#       COMPANY: ICNN, UCLA
+#       CREATED:  ---
+#      REVISION: 06/10/2015
+#
+#===============================================================================
+
+
+#!/bin/bash
+
+fastq_digest=$1
+step=step2_bwa_sampe
+exe=do_step2_bwa_sampe
+F=$2
+
+while read line
+
+do
+
+        s=`echo $line | awk -F' ' '{print $1}'`
+        r1=`echo $line | awk -F' ' '{print $2}'`
+        r2=`echo $line | awk -F' ' '{print $3}'`
+
+
+        outdir=$F/results/$s/Out
+        logdir=$F/results/$s/Log
+        jobdir=$F/results/$s/Job
+	
+	tmp=`ls $outdir`
+	sai_R1=`echo $tmp | awk -F' ' '{print $1}'`	
+	sai_R2=`echo $tmp | awk -F' ' '{print $2}'`
+        fastq_R1=$r1
+        fastq_R2=$r2
+	job=$jobdir/$step.$s.job
+
+
+        if [ -e $job ]; then
+                echo "$job already exists"
+
+        else
+		sleep 2
+                qsub -e $logdir -o $logdir -N $step -R y $F/$exe $outdir/$sai_R1 $outdir/$sai_R2 $fastq_R1 $fastq_R2 $outdir $s > $job
+             
+                cat $job
+        fi
+
+
+
+done < $fastq_digest
