@@ -1,0 +1,31 @@
+#!/bin/bash
+#$ -S /bin/sh
+#$ -l h_data=10G,h_rt=10:00:00
+
+
+time1=$( date "+%s" )
+
+echo [Directory] `pwd`
+echo [Machine] `uname -n`
+echo [Start] `date`
+echo [args] $*
+
+
+output_dir=$1
+s=$2
+
+ref=/coppolalabshares/marisaprj01/Takeda/Pipeline/reference/human_g1k_v37.no_unlocalized_contigs.fasta
+vcf=/coppolalabshares/marisaprj01/Takeda/Pipeline/dbSNP/dbsnp_138.b37.vcf
+interval=/coppolalabshares/marisaprj01/Takeda/Pipeline/intervals/SeqCap_EZ_Exome_v3_primary.bed.intervals
+
+echo "Running:"
+echo "gatk haplotype caller"
+
+
+java -Xmx4g -Xms2g -Djava.io.tmpdir=/home/yqin/201505_ExomeSeq/tmp -jar /home/yqin/bin/GenomeAnalysisTK.jar -D $vcf  -L $interval -o $output_dir/$s.haplotypecaller.vcf -I $output_dir/$s.aln.dedup.bam -T HaplotypeCaller -R $ref -variant_index_parameter 128000 -variant_index_type LINEAR -nda -maxAltAlleles 4 -ERC GVCF  -contamination 0.02
+
+
+
+time2=$( date "+%s" )
+echo [deltat] $(( $time2 - $time1 ))
+echo [End] `date`
