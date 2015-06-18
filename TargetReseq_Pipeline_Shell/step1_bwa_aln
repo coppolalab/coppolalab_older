@@ -1,0 +1,75 @@
+#===============================================================================
+#
+#          FILE:  step1_bwa_aln
+#         USAGE:  ./step1_bwa_aln digest_fastq_file exe_folder
+#   DESCRIPTION: 
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Yue Qin, YQin@mednet.ucla.edu
+#       COMPANY: ICNN, UCLA
+#       CREATED:  ---
+#      REVISION: 06/10/2015
+
+#   reference file versions:
+#   reference genome: human_g1k_v37.no_unlocalized_contigs.fasta(ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/,1000genome project, v37, 5/17/10)
+#   dbsnp database: dbsnp_138.b37.vcf(build 138, 04/25/13)
+#   target region files: 2014.Takeda.new.intervals
+#   if exome sequencing, using target region files: SeqCap_EZ_Exome_v3_primary.bed.intervals(SeqCap EZ Human Exome Library v3.0 download from http://www.nimblegen.com/products/seqcap/ez/v3/index.html)
+
+#   software versions:(running exome sequencing 2015-9075)
+#   bwa-0.7.12
+#   picard-tools-1.130
+#   samtools-1.1
+#   GenomeAnalysisTK-3.3-0
+#===============================================================================
+
+
+#!/bin/bash
+
+fastq_digest=$1
+step=step1_bwa_aln
+exe=do_step1_bwa_aln
+F=$2
+
+while read line
+
+do 
+
+	s=`echo $line | awk -F' ' '{print $1}'`
+	r1=`echo $line | awk -F' ' '{print $2}'`
+	r2=`echo $line | awk -F' ' '{print $3}'`
+
+	
+	outdir=$F/results/$s/Out
+	logdir=$F/results/$s/Log
+	jobdir=$F/results/$s/Job
+
+	job_R1=$jobdir/$step.$s.R1.job
+	job_R2=$jobdir/$step.$s.R2.job
+	input_R1=$r1
+	input_R2=$r2	
+
+	if [ -e $job_R1 ]; then
+        	echo "$job_R1 already exists"
+	elif [ -e $job_R2 ]; then
+		echo "$job_R2 already exists"
+	else
+
+        	mkdir -p $logdir
+        	mkdir -p $jobdir
+        	mkdir -p $outdir
+		
+		sleep 2
+        	qsub -e $logdir -o $logdir -N $step -R y $F/$exe $input_R1 $outdir $s.R1 > $job_R1
+		sleep 2
+		qsub -e $logdir -o $logdir -N $step -R y $F/$exe $input_R2 $outdir $s.R2 > $job_R2
+
+		cat $job_R1
+		cat $job_R2
+	fi
+
+
+
+done < $fastq_digest
