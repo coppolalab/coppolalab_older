@@ -94,9 +94,9 @@ def call_sample_gvcf(sample_id, fq1, fq2, manager, args):
     manager.bwa_aln_pair(sai1, sai2, fq1, fq2, args.reference, raw_bam, **{'-r': rgstr})
     manager.sort_bam(raw_bam, sorted_bam, **java_args)
     manager.mark_duplicates(sorted_bam, dedup_bam, **java_args)
-    #manager.create_indel_intervals([args.dbsnp], input=dedup_bam, output=realn_int, **gatk_args)
-    #manager.realign_intervals([args.dbsnp], input=dedup_bam, target_intervals=realn_int, output=realn_bam, 
-    #                          **{k: v for k, v in gatk_args.iteritems() if k != 'intervals'})
+    manager.create_indel_intervals([args.dbsnp], input=dedup_bam, output=realn_int, **gatk_args)
+    manager.realign_intervals([args.dbsnp], input=dedup_bam, target_intervals=realn_int, output=realn_bam, 
+                              **{k: v for k, v in gatk_args.iteritems() if k != 'intervals'})
     manager.haplotype_caller(dbsnp=args.dbsnp, input=dedup_bam, output=call_gvcf, 
                              scatter=args.scatter, **gatk_args)
     return call_gvcf
