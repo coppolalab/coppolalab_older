@@ -2,18 +2,17 @@
 
 Giovanni Coppola Laboratory, UCLA
 
-##this is to generate files for each module to upload to network browser. ##the files are based on the output from WGCNA analysis for viSant
-## two types of files required:
-## (1) module.csv file contains correlation of module eigengenes, and this is ##     for the first page of the browser
-## (2) csv files for each module
+This is to generate files for each module to upload to network browser. ##the files are based on the output from WGCNA analysis for viSant
+two types of files required:
+(1) module.csv file contains correlation of module eigengenes, and this is ##     for the first page of the browser
+(2) csv files for each module
 
-## require files:
-## (1) module eigengenes output from WGCNA analysis
-## (2) viSant input files from WGCNA for each module
+Require files:
+(1) module eigengenes output from WGCNA analysis
+(2) viSant input files from WGCNA for each module
 
-## this is run under R
-
-
+This is run under R
+```
 ##set work directory
 setwd("E:/STUDY/WGCNA_results")
 
@@ -79,5 +78,5 @@ write.table(black[1:1500,], "black.csv",sep=",",row.names=F, col.names = F)
 
 #Note: column 5 (V5) is the connectivity and it must be sorted decreasingly,
 Currently the browser allows to upload up to 1500 pairs but only top 500 pairs can be shown.
-
+```
 
