@@ -1,3 +1,4 @@
+#Network Browser
 The network browser project is developed by Yeongshnn Ong and Yining Zhao at the [Coppola Lab](http://www.semel.ucla.edu/coppolalab), UCLA. 
 
 ##Implementation
