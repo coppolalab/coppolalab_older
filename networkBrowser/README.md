@@ -19,4 +19,4 @@ The Module View
 ![alt tag](https://raw.githubusercontent.com/giovannicoppola/coppolalab/master/networkBrowser/images/module_view.png)
 
 ##Contact
-If you have any questions regarding this project, please contact us at [semeladmin@ucl.edu](mailto:semeladmin@ucla.edu)
+If you have any questions regarding this project, please contact Yining at [yining@yiningzhao.info](mailto:yining@yiningzhao.info)
