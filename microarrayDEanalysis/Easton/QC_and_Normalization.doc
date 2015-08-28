@@ -1,0 +1,960 @@
+
+Giovanni Coppola Laboratory, UCLA
+
+# Loading packages-- 
+
+library (Biobase)
+library(marray)
+library (limma)
+library(RColorBrewer)
+library(MASS)
+library(gplots)
+library(heatmap.plus)
+
+
+setwd("/home/fuying/m1/easton_net")
+
+targets<-read.csv(file="targets_eastonLincy_total19sets.csv", header=T)
+
+labls<- targets$SampleName
+
+phD <- targets[,c(5,6)]
+rownames(phD)<-labls
+
+metadata<-data.frame(labelDescription=c("SampleName","Genotype"), row.names= c("SampleName","Genotype"))
+
+pD<-new("AnnotatedDataFrame",data=phD, varMetadata=metadata)
+
+
+###reading the dataset
+
+###v3
+s2009_012<-read.csv("RawData_platformV3_rawData_2009_012.csv",header=T)
+colnames(s2009_012)
+
+s2009_012<-s2009_012[,c(1,10:25,2:8)]
+colnames(s2009_012)
+
+s2009_046<-read.csv("RawData_platformV3_rawData_2009_046.csv",header=T)
+colnames(s2009_046)
+
+
+s2009_106<-read.csv("RawData_platformV3_rawData_2009_106.csv",header=T)
+colnames(s2009_106)
+
+
+s2009_158<-read.csv("RawData_platformV3_rawData_2009_158.csv",header=T)
+colnames(s2009_158)
+
+s2010_030<-read.csv("RawData_platformV3_rawData_2010_030.csv",header=T)
+colnames(s2010_030)
+s2010_030<- s2010_030[,c(1:9,18:25,10:17,26:41)]
+colnames(s2010_030)
+
+
+s2010_031<-read.csv("RawData_platformV3_rawData_2010_031.csv",header=T)
+colnames(s2010_031)
+
+##put v3 together
+s012046<-merge(s2009_012, s2009_046,by.x="Probe", by.y="Probe")
+dim(s012046)
+
+s012046106<-merge(s012046, s2009_106,by.x="Probe", by.y="Probe")
+dim(s012046106)
+
+s012046106158<-merge(s012046106, s2009_158,by.x="Probe", by.y="Probe")
+dim(s012046106158)
+
+s012046106158030<-merge(s012046106158, s2010_030,by.x="Probe", by.y="Probe")
+dim(s012046106158030)
+
+sv3<-merge(s012046106158030, s2010_031,by.x="Probe", by.y="Probe")
+dim(sv3)
+
+write.table(sv3, "easton_rawData_v3_155samples.csv", sep=",",row.names=F)
+write.table(s2009_012, "rawData_v3_2009_012.csv", sep=",",row.names=F)
+write.table(s2010_030, "rawData_v3_2010_030.csv", sep=",",row.names=F)
+
+##v4, 2010-180
+
+data<-read.ilmn (files="2010-180 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval 
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2010_180.csv", sep=",",row.names=F)
+write.table(out1[,c(1,18,33,57,58,68,73,80,86)], "rawData_v4_2010_180_lincy.csv", sep=",",row.names=F)
+write.table(out1[,-c(18,33,57,58,68,73,80,86)], "rawData_v4_2010_180_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2010_180.csv", sep=",",row.names=F)
+write.table(out2[,-c(18,33,57,58,68,73,80,86)], "detscoP_v4_2010_180_easton.csv", sep=",",row.names=F)
+
+
+##v4, 2011-211
+
+data<-read.ilmn (files="2011-211 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E[,c(18,21,24)]
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval[,c(18,21,24)] 
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2011_211.csv", sep=",",row.names=F)
+#write.table(out1[,c(1,18,33,57,58,68,73,80,86)], "rawData_v4_2010_180_lincy.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2011_211.csv", sep=",",row.names=F)
+#write.table(out2[,c(1,18,33,57,58,68,73,80,86)], "detscoP_v4_2010_180_lincy.csv", sep=",",row.names=F)
+
+
+##v4, 2011-089
+
+data<-read.ilmn (files="2011-089 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E[,c(2,28:32,35:36,61:64,68:76,80:84,87:92,95:96,100:104,108,148:152,156,157:160,164:168)]
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval[,c(2,28:32,35:36,61:64,68:76,80:84,87:92,95:96,100:104,108,148:152,156,157:160,164:168)]
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2011_089.csv", sep=",",row.names=F)
+write.table(out1[,c(1,7,13,18,22,27,33)], "rawData_v4_2011_089_lincy.csv", sep=",",row.names=F)
+write.table(out1[,-c(7,13,18,22,27,33)], "rawData_v4_2011_089_easton.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2011_089.csv", sep=",",row.names=F)
+write.table(out2[,c(1,7,13,18,22,27,33)], "detscoP_v4_2011_089_lincy.csv", sep=",",row.names=F)
+write.table(out2[,-c(7,13,18,22,27,33)], "detscoP_v4_2011_089_easton.csv", sep=",",row.names=F)
+
+
+##v4, 2011-125
+
+data<-read.ilmn (files="2011-125 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E[,c(5,7,9:11,21,23,25,26,35,37,39,41,42,49,51,52,63,65:67,73,75,77:79,91,93,95,96,99,101,103:105)]
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval[,c(5,7,9:11,21,23,25,26,35,37,39,41,42,49,51,52,63,65:67,73,75,77:79,91,93,95,96,99,101,103:105)]
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2011_125.csv", sep=",",row.names=F)
+write.table(out1[,c(1,6,36)], "rawData_v4_2011_125_lincy.csv", sep=",",row.names=F)
+write.table(out1[,-c(6,36)], "rawData_v4_2011_125_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2011_125.csv", sep=",",row.names=F)
+write.table(out2[,c(1,6,36)], "detscoP_v4_2011_125_lincy.csv", sep=",",row.names=F)
+write.table(out2[,-c(6,36)], "detscoP_v4_2011_125_easton.csv", sep=",",row.names=F)
+
+
+##v4, 2011-148
+
+data<-read.ilmn (files="2011-148 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E[,c(5,9,10,14:15,19:20,24,29,34,39,55)]
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval[,c(5,9,10,14:15,19:20,24,29,34,39,55)]
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2011_148.csv", sep=",",row.names=F)
+write.table(out1[,c(1,13)], "rawData_v4_2011_148_lincy.csv", sep=",",row.names=F)
+write.table(out1[,-13], "rawData_v4_2011_148_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2011_148.csv", sep=",",row.names=F)
+write.table(out2[,c(1,13)], "detscoP_v4_2011_148_lincy.csv", sep=",",row.names=F)
+write.table(out2[,-c(13)], "detscoP_v4_2011_148_easton.csv", sep=",",row.names=F)
+
+
+##v4, 2011-189
+
+data<-read.ilmn (files="2011-189 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E[,c(5,13,21,30,40,47,49:50,57:58)]
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval[,c(5,13,21,30,40,47,49:50,57:58)]
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2011_189.csv", sep=",",row.names=F)
+#write.table(out1[,c(1,13)], "rawData_v4_2011_189_lincy.csv", sep=",",row.names=F)
+#write.table(out1[,-13], "rawData_v4_2011_189_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2011_189.csv", sep=",",row.names=F)
+#write.table(out2[,c(1,13)], "detscoP_v4_2011_189_lincy.csv", sep=",",row.names=F)
+
+
+
+##v4, 2012-024
+
+data<-read.ilmn (files="2012-024 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E[,c(10:12,23:24,35:36,47:48,59:60,70:72,82:84,95:96)]
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval[,c(10:12,23:24,35:36,47:48,59:60,70:72,82:84,95:96)]
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2012_024.csv", sep=",",row.names=F)
+#write.table(out1[,c(1,13)], "rawData_v4_2012_024_lincy.csv", sep=",",row.names=F)
+#write.table(out1[,-13], "rawData_v4_2012_024_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2012_024.csv", sep=",",row.names=F)
+#write.table(out2[,c(1,13)], "detscoP_v4_2012_024_lincy.csv", sep=",",row.names=F)
+
+
+##v4, 2012-067
+
+data<-read.ilmn (files="2012-067 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2012_067.csv", sep=",",row.names=F)
+#write.table(out1[,c(1,13)], "rawData_v4_2011_067_lincy.csv", sep=",",row.names=F)
+#write.table(out1[,-13], "rawData_v4_2011_067_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2012_067.csv", sep=",",row.names=F)
+#write.table(out2[,c(1,13)], "detscoP_v4_2012_067_lincy.csv", sep=",",row.names=F)
+
+
+##v4, 2012-213
+
+data<-read.ilmn (files="2012-213 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2012_213.csv", sep=",",row.names=F)
+#write.table(out1[,c(1,13)], "rawData_v4_2011_213_lincy.csv", sep=",",row.names=F)
+#write.table(out1[,-13], "rawData_v4_2011_213_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2012_213.csv", sep=",",row.names=F)
+#write.table(out2[,c(1,13)], "detscoP_v4_2012_213_lincy.csv", sep=",",row.names=F)
+
+
+##v4, 2013-163
+
+data<-read.ilmn (files="2013-163 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2013_163.csv", sep=",",row.names=F)
+#write.table(out1[,c(1,13)], "rawData_v4_2013_163_lincy.csv", sep=",",row.names=F)
+#write.table(out1[,-13], "rawData_v4_2013_213_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2013_163.csv", sep=",",row.names=F)
+#write.table(out2[,c(1,13)], "detscoP_v4_2013_163_lincy.csv", sep=",",row.names=F)
+
+
+
+##v4, 2014-031
+
+data<-read.ilmn (files="2014-031 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E[,c(4,29,38,45,49,50,52:55,58:60,62:64,70,72,76:78, 83,86,92,94:96)]
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval [,c(4,29,38,45,49,50,52:55,58:60,62:64,70,72,76:78, 83,86,92,94:96)]
+
+colnames(detsco.p) 
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2014_031_exclude.csv", sep=",",row.names=F)
+#write.table(out1[,c(1,13)], "rawData_v4_2013_163_lincy.csv", sep=",",row.names=F)
+#write.table(out1[,-13], "rawData_v4_2013_213_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2014_031_exclude.csv", sep=",",row.names=F)
+#write.table(out2[,c(1,13)], "detscoP_v4_2013_163_lincy.csv", sep=",",row.names=F)
+
+
+##v4, 2015-9078
+
+data<-read.ilmn (files="2015-9078 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2015_9078.csv", sep=",",row.names=F)
+#write.table(out1[,c(1,13)], "rawData_v4_2013_163_lincy.csv", sep=",",row.names=F)
+#write.table(out1[,-13], "rawData_v4_2013_213_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2015_9078.csv", sep=",",row.names=F)
+#write.table(out2[,c(1,13)], "detscoP_v4_2013_163_lincy.csv", sep=",",row.names=F)
+
+
+##v4, 2015-9090
+
+data<-read.ilmn (files="2015-9090 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE) 
+colnames(data$E)
+
+raw_data<-data$E
+colnames(raw_data)
+ 
+detsco.p<- data$other$Detection.Pval
+colnames(detsco.p)
+
+out1<-as.data.frame(cbind(Probe=rownames(raw_data),raw_data))
+colnames(out1)
+
+out2<-as.data.frame(cbind(Probe=rownames(detsco.p), detsco.p))
+colnames(out2)
+
+write.table(out1, "rawData_v4_2015_9090.csv", sep=",",row.names=F)
+write.table(out1[,c(1,2:31)], "rawData_v4_2015_9090_lincy.csv", sep=",",row.names=F)
+write.table(out1[,c(1,32:37)], "rawData_v4_20153_9090_eastonOnly.csv", sep=",",row.names=F)
+
+write.table(out2, "detscoP_v4_2015_9090.csv", sep=",",row.names=F)
+write.table(out2[,c(1,2:31)], "detscoP_v4_2015_9090_lincy.csv", sep=",",row.names=F)
+write.table(out2[,c(1,32:37)], "detscoP_v4_2015_9090_eastonOnly.csv", sep=",",row.names=F)
+
+###easton only
+setwd("/home/fuying/m1/easton_net")
+
+##v3
+load("v3-raw")
+
+s012046<-merge(s2009_012, s2009_046, by.x="Probe", by.y="Probe")
+dim(s012046)
+
+s012046106<-merge(s012046, s2009_106, by.x="Probe", by.y="Probe")
+dim(s012046106)
+
+s012046106158<-merge(s012046106, s2009_158, by.x="Probe", by.y="Probe")
+dim(s012046106158)
+
+
+s012046106158030<-merge(s012046106158, s2010_030, by.x="Probe", by.y="Probe")
+dim(s012046106158030)
+
+s012046106158030031<-merge(s012046106158030, s2010_031, by.x="Probe", by.y="Probe")
+dim(s012046106158030031)
+
+annot3<-read.csv("HumanRef-8_V3_0_R0_11282963_A.csv",header=T)
+dim(annot3)
+
+colnames(annot3)
+
+v3raw<-merge(s012046106158030031, annot3, by.x="Probe", by.y="Probe_Id")
+dim(v3raw)
+
+v3raw<- v3raw[,c(1,167:168,178,2:156,157:166,169:177,179:183)]
+colnames(v3raw)
+
+write.table(v3raw, "Easton_platformV3_rawData_155samples_slideHeader.csv",sep=",",row.names=F)
+
+targets<- read.csv("targets_easton_total19sets_deletedDuplicates.csv",header=T)
+dim(targets)
+##620 19
+
+targets3<-targets[1:155,]
+
+rownames(v3raw)<-v3raw$Probe
+v3raw<- v3raw[,5:159]
+dim(v3raw)
+[1] 24526   155
+
+colnames(v3raw)
+
+labls<-targets3$SampleName
+colnames(v3raw)<-labls
+
+raw3<- as.data.frame(cbind(Probe=rownames(v3raw),v3raw))
+colnames(raw3)
+
+raw33<-merge(raw3,annot3,by.x="Probe",by.y="Probe_Id")
+raw33<-raw33[,c(1,167,168,178,2:166,169:177,179:183)]
+colnames(raw33)
+
+write.table(raw33, "Easton_rawData_v3_155samples.csv",sep=",",row.names=F
+#rownames(v3raw)<- rawLincy$Probe
+ mydata.notlog<- v3raw
+
+mydata=log2(mydata.notlog)
+matriz=as.matrix(mydata)
+
+  
+# signal plots---
+nsampl=155
+   
+batch<- as.vector(targets3$Batch)
+batch [targets3$Batch ==1]<- "grey60"
+batch [targets3$Batch ==2]<- "gold4"
+batch [targets3$Batch ==3]<- "pink"
+batch [targets3$Batch ==4]<- "cyan"
+batch [targets3$Batch ==5]<- "brown"
+batch [targets3$Batch ==6]<- "purple"
+
+batch [targets$Batch ==7]<- "grey60"
+batch [targets$Batch ==8]<- "pink"
+batch [targets$Batch ==9]<- "cyan"
+batch [targets$Batch ==10]<- "gold4"
+batch [targets$Batch ==11]<- "gold4"
+batch [targets$Batch ==12]<- "gold4"
+batch [targets$Batch ==13]<- "gold4"
+batch [targets$Batch ==14]<- "gold4"
+batch [targets$Batch ==15]<- "gold4"
+batch [targets$Batch ==16]<- "gold4"
+batch [targets$Batch ==17]<- "gold4"
+batch [targets$Batch ==18]<- "gold4"
+batch [targets$Batch ==19]<- "purple"
+
+
+time<- as.vector(targets3$year.of.follow.up)
+time [targets3$year.of.follow.up =="Baseline"]<- "red"
+time [targets3$year.of.follow.up =="Year_1"]<- "blue"
+time [targets3$year.of.follow.up =="Year_2"]<- "green"
+time [targets3$year.of.follow.up =="Year_3"]<- "magenta"
+time [targets3$year.of.follow.up =="Year_4"]<- "yellow"
+
+jpeg("1_signal.jpg", width=1300,height=800)
+par(cex.axis=0.6)
+boxplot(as.data.frame(matriz),main="Signal Not normalized",col=batch, names=labls, las=3,adj=1)
+dev.off()
+
+# signal distribution plots-
+jpeg("1-_signal_distribution.jpg", width=1300,height=800)
+
+par(mfrow=c(6,8))
+for (k in 1:47){
+   plot(density(mydata[,k]), main=paste("signal, ", labls[k], sep=""), cex=0.8)
+}
+dev.off()
+
+jpeg("1-detsco-distribution_p.jpg", width=1300,height=800)
+
+par(mfrow=c(6,8))
+for (k in 1:47){
+   plot(density(detscop[,k]), main=paste("detection p-value, ", labls[k], sep=""), cex=0.8)
+}
+dev.off()
+
+
+jpeg("1_detsco%d.jpg", width=1300,height=800)
+
+#detection scores
+par(cex.axis=0.6)
+boxplot(as.data.frame(detsco),main="Detection scores",names=labls, col=batch,las=3)
+abline(h=0.9, col="red")
+
+par(cex.axis=0.6)
+boxplot(as.data.frame(detsco.p),main="Detection scores p-value",names=labls, col=batch,las=3)
+dev.off()
+
+
+thresholds<-c(0.99,0.98,0.97,0.96)
+pdf("1-detsco_stats.pdf",height=9,width=18)
+par (mfrow = c(2,2))
+for (thr in thresholds) {
+apply(detsco,2,function(x)length(which(x>thr)))->detsco.table
+grn<-detsco.table/nrow(mydata)
+#grn<-grn[sort(names(grn))]
+col<-batch
+#col<-as.character(as.numeric(Samples$strain))
+grn.m<-mean(grn)
+grn.sd<- sd(grn)
+sd1p<-grn.m+(grn.sd)
+sd1m<-grn.m-(grn.sd)
+
+sd2p<-grn.m+(grn.sd*2)
+sd2m<-grn.m-(grn.sd*2)
+sd3p<-grn.m+(grn.sd*3)
+sd3m<-grn.m-(grn.sd*3)
+    par(cex.axis=0.5)
+
+plot(x=1:nsampl,y=grn,col=col,pch=19,xaxt="n",main=paste("Detection Threshold = ",thr,sep=""),xlab="",ylab=paste("Fraction Detected at ",thr,sep=""))
+axis(1,at=1:nsampl,labels=names(grn),las=2)
+#legend(x="topright",fill=unique(col),as.character(unique(Samples$Batch[order(Samples$Array)])),cex=0.9,bty="n")
+abline(sd1p,0,lty=2,col=1)
+abline(sd1m,0,lty=2, col=1)
+
+abline(sd2p,0,lty=2,col=3)
+abline(sd2m,0,lty=2, col=3)
+abline(sd3p,0,lty=2, lwd=2,col=2)
+abline(sd3m,0,lty=2,lwd=2,col=2)
+text(sd1m,"1SD",pos=1)
+text(sd3m,"3SD",pos=1)
+text(sd2m,"2SD",pos=1)
+}
+dev.off()
+
+
+#histogram
+probes99<-apply(detsco,1,function(x)length(which(x>=0.99)))
+
+pdf("1-detsco_hist.pdf",height=10,width=10)
+hist(probes99,br=nsampl,col="blue", main="Distribution of present genes")
+axis(side=4,at= length(probes99)*seq(0,0.5,0.1),labels= seq(0,50,10))
+dev.off()
+
+jpeg("1_signal_detsco.jpg", width=1300,height=800)
+par (mfrow = c(6,8))
+for(k in 1:nsampl)
+plot(x=matriz[,k], y=detsco[,k],cex=0.4, main=labls[k],xlab="log2 signal",ylab="Detection score")
+
+dev.off()
+
+# signal correlation plots 
+
+matcor<-cor(matriz)
+range(as.vector (matcor))
+
+clab<-cbind(time,batch)
+library(heatmap.plus)
+pdf("2_corr_heatmap_notNorm.pdf", width=10,height=10)
+heatmap.plus(matcor, trace="none",scale="none",col=heat.colors(40), ColSideColors=clab, cexCol=0.6,cexRow=0.6, main="Clustering, Not normalized",keysize=1)
+dev.off()
+
+
+# signal correlation plots 
+
+pdf("2_AIC.pdf", width=13,height=10)
+
+IAC=cor(matriz,use="p")
+cluster1=hclust(as.dist(1-IAC))
+plot(cluster1, main=paste("v3, (no=",dim(IAC)[2],")"))
+dev.off()
+
+meanIAC=apply(IAC,2,mean)
+sdCorr=sd(meanIAC)
+numbersd=(meanIAC-mean(meanIAC))/sdCorr
+y=length(IAC[1,])
+x=(mean(IAC)*(y^2)-y)/((y^2)-y)
+
+ 
+pdf("2_sd.pdf",width=10,height=10)
+
+plot(numbersd, type="n", main="all samples", ylab="z-score",) 
+text(numbersd, labels=labls, cex=0.7,col="red")
+#abline(h=-2, col=4)
+#abline(h=-3, col=5)
+dev.off()
+
+
+# Between-arrays normalization- 
+
+norm<-normalizeBetweenArrays(as.matrix(matriz),method="quantile")
+
+jpeg("3_normalized.jpg", width=1300,height=800)
+par(cex.axis=0.6)
+boxplot(as.data.frame(norm),main="Quantile normalization", col= batch,names=labls, las=3)
+dev.off()
+
+#after normalization array signal correlation
+
+matcorN<-cor(norm)
+range(matcorN) 
+
+pdf("3_corr_heatmap_Norm.pdf", width=10,height=10)
+heatmap.plus(matcorN, trace="none",scale="none",col=heat.colors(40), ColSideColors=clab, cexCol=0.6,cexRow=0.6, main="normalized" , keysize=1)
+dev.off()
+
+
+# Creating the exprSet object 
+
+ftdexp<-norm
+
+##output normalized
+out<-as.data.frame(cbind(Probe=rownames(ftdexp),ftdexp))
+colnames(out)
+
+out1<-merge(out,annot3,by.x="Probe", by.y="Probe_Id")
+colnames(out1)
+out2<-out1[,c(1,167:168,178,2:166,169:177,179:183)]
+colnames(out2)
+
+write.csv(out2, "Easton_v3_normalizedData_155samples.csv")
+
+#Array clustering based on gene variability 
+
+
+standardize <- function(z) {
+  rowmed <- apply(z, 1, median)
+  rowmad <- apply(z, 1, mad)
+  rv <- sweep(z, 1, rowmed)
+  rv <- sweep(rv, 1, rowmad, "/")
+  return(rv)
+}
+
+rowMads <- apply(ftdexp, 1, mad)
+
+#top 1000 variable genes 
+
+ord <- order(rowMads,decreasing=TRUE)
+top1000 <- ord[1:1000]
+ftdexp2 <- ftdexp[top1000, ]
+ftddist2 <- dist(t(standardize(ftdexp2)))
+
+summary(ftddist2) 
+
+ftdcl2 <- hclust(ftddist2)
+ftddism2<-as.matrix(ftddist2)
+
+#top 500 variable genes- 
+top500 <- ord[1:500]
+ftdexp3 <- ftdexp[top500, ]
+ftddist3 <- dist(t(standardize(ftdexp3)))
+
+ftdcl3 <- hclust(ftddist3)
+ftddism3<-as.matrix(ftddist3)
+
+#heatmaps
+pdf("4_clst_heatmap_mostVariable.pdf", width=10,height=10)
+heatmap.plus(ftddism2, trace="none",col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main=" Top 1000 Most Variable Genes",   cexRow=0.6,cexCol=0.6, ColSideColors=clab,  scale="none",keysize=1)
+heatmap.plus(ftddism3, col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main=" Top 500 Most Variable Genes ", trace="none",   cexRow=0.6,cexCol=0.6, ColSideColors=clab, scale="none",keysize=1)
+dev.off()
+
+#---MDS- 
+cm1 <- cmdscale(ftddist2, eig=TRUE)
+ 
+pdf("4_MDS_2.pdf", width=20,height=10)
+par(mfrow=c(1,2))
+myPlot <- function(x, ...)
+plot(x$points, xlab=" Component 1", ylab="Component 2", lwd=4,col=batch, pch=19, xlim=c(-50,50),...)
+
+myPlot(cm1, main=" data set ")
+chw <- par()$cxy[1]
+text(x=cm1$points[,1]+(0.3*chw),y=cm1$points[,2],main="MDS", lwd=4,labels=labls,adj=0, cex=0.7)
+legend(x="topleft",legend=unique(targets3$Batch),col=unique(batch),fill= unique(batch), cex=1.2)
+
+myPlot <- function(x, ...)
+plot(x$points, xlab="Component 1", ylab="Component 2", lwd=4,col=time, pch=19, xlim=c(-50,50),...)
+
+myPlot(cm1, main=" Timepoint ")
+chw <- par()$cxy[1]
+text(x=cm1$points[,1]+(0.3*chw),y=cm1$points[,2],main="MDS", lwd=4,labels=labls,adj=0, cex=0.7)
+legend(x="topleft",legend=unique(targets3$year.of.follow.up),col=unique(time),fill= unique(time), cex=1.2)
+dev.off()
+
+##output normalized
+###norm by timepoint
+mydata.baseline<-matriz[,targets3$year.of.follow.up=="Baseline"]
+dim(mydata.baseline)
+
+mydata.year1<-matriz[,targets3$year.of.follow.up=="Year_1"]
+dim(mydata.year1)
+
+mydata.year2<-matriz[,targets3$year.of.follow.up=="Year_2"]
+dim(mydata.year2)
+
+mydata.year3<-matriz[,targets$year.of.follow.up=="Year_3"]
+dim(mydata.year3)
+
+mydata.year4<-matriz[,targets$year.of.follow.up=="Year_4"]
+dim(mydata.year4)
+
+###Normalize by time points
+norm.b<-normalizeBetweenArrays(as.matrix(mydata.baseline),method="quantile")
+norm.1<-normalizeBetweenArrays(as.matrix(mydata.year1),method="quantile")
+norm.2<-normalizeBetweenArrays(as.matrix(mydata.year2),method="quantile")
+norm.3<-normalizeBetweenArrays(as.matrix(mydata.year3),method="quantile")
+norm.4<-normalizeBetweenArrays(as.matrix(mydata.year4),method="quantile")
+
+
+##output normalized
+out<-as.data.frame(cbind(Probe=rownames(norm.b),norm.b))
+colnames(out)
+out1<-merge(out,annot,by.x="Probe", by.y="Probe_Id")
+colnames(out1)
+
+out2<-out1[,c(1,167:168,178,2:166,169:177,179:183)]
+colnames(out2)
+
+write.csv(out2, "Easton_v3_normalizedData_baseline.csv")
+
+rm(out,out1,out2)
+out<-as.data.frame(cbind(Probe=rownames(norm.1),norm.1))
+colnames(out)
+
+out1<-merge(out,annot3,by.x="Probe", by.y="Probe_Id")
+colnames(out1)
+out2<-out1[,c(1,56:57,67,2:55,58:66, 68:72)]
+colnames(out2)
+
+write.csv(out2, "Easton_v3_normalizedData_year1.csv")
+
+timeb<-time[targets3$year.of.follow.up=="Baseline"]
+batchb<-batch[targets3$year.of.follow.up=="Baseline"]
+time1<-time[targets3$year.of.follow.up=="Year_1"]
+batch1<-batch[targets3$year.of.follow.up=="Year_1"]
+
+clabb<-clab[targets3$year.of.follow.up=="Baseline",]
+clab1<-clab[targets3$year.of.follow.up=="Year_1",]
+
+matcorNb<-cor(norm.b)
+range(matcorNb) 
+
+pdf("3_corr_heatmap_Norm_baseline.pdf", width=10,height=10)
+heatmap.plus(matcorNb, trace="none",scale="none",col=heat.colors(40), ColSideColors=clabb, cexCol=0.6,cexRow=0.6, main="normalized, baseline" , keysize=1)
+dev.off()
+
+
+standardize <- function(z) {
+  rowmed <- apply(z, 1, median)
+  rowmad <- apply(z, 1, mad)
+  rv <- sweep(z, 1, rowmed)
+  rv <- sweep(rv, 1, rowmad, "/")
+  return(rv)
+}
+
+rowMads <- apply(norm.b, 1, mad)
+
+#top 1000 variable genes 
+
+ord <- order(rowMads,decreasing=TRUE)
+top1000 <- ord[1:1000]
+ftdexp2 <- norm.b [top1000, ]
+ftddist2 <- dist(t(standardize(ftdexp2)))
+
+summary(ftddist2) 
+
+ftdcl2 <- hclust(ftddist2)
+ftddism2<-as.matrix(ftddist2)
+
+#top 500 variable genes- 
+top500 <- ord[1:500]
+ftdexp3 <- norm.b [top500, ]
+ftddist3 <- dist(t(standardize(ftdexp3)))
+
+ftdcl3 <- hclust(ftddist3)
+ftddism3<-as.matrix(ftddist3)
+
+#heatmaps
+pdf("4_clst_heatmap_mostVariable_baseline.pdf", width=10,height=10)
+
+heatmap.plus(ftddism2, trace="none",col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main="baseline, Top 1000 Most Variable Genes",   cexRow=0.6,cexCol=0.6, ColSideColors=clabb,  scale="none",keysize=1)
+
+heatmap.plus(ftddism3, col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main="baseline, Top 500 Most Variable Genes ", trace="none",   cexRow=0.6,cexCol=0.6, ColSideColors=clabb, scale="none",keysize=1)
+dev.off()
+
+#---MDS- 
+targets3b= targets3[targets3$year.of.follow.up== "Baseline",]
+targets31= targets3[targets3$year.of.follow.up== "Year_1",]
+
+
+cm1 <- cmdscale(ftddist2, eig=TRUE)
+ 
+pdf("4_MDS_baseline.pdf", width=20,height=10)
+par(mfrow=c(1,2))
+myPlot <- function(x, ...)
+plot(x$points, xlab=" Component 1", ylab="Component 2", lwd=4,col=batchb, pch=19, xlim=c(-50,50),...)
+
+myPlot(cm1, main=" data set ")
+chw <- par()$cxy[1]
+text(x=cm1$points[,1]+(0.3*chw),y=cm1$points[,2],main="MDS", lwd=4,labels=colnames(norm.b),adj=0, cex=0.7)
+legend(x="topright",legend=unique(targets3b$Batch),col=unique(batchb),fill= unique(batchb), cex=1.2)
+
+myPlot <- function(x, ...)
+plot(x$points, xlab="Component 1", ylab="Component 2", lwd=4,col=timeb, pch=19, xlim=c(-50,50),...)
+
+myPlot(cm1, main=" Timepoint ")
+chw <- par()$cxy[1]
+text(x=cm1$points[,1]+(0.3*chw),y=cm1$points[,2],main="MDS", lwd=4,labels=colnames(norm.b),adj=0, cex=0.7)
+legend(x="topright",legend=unique(targets3b$year.of.follow.up),col=unique(timeb),fill= unique(timeb), cex=1.2)
+dev.off()
+
+
+matcorN1<-cor(norm.1)
+range(matcorN1) 
+
+pdf("3_corr_heatmap_Norm_year1.pdf", width=10,height=10)
+heatmap.plus(matcorN1, trace="none",scale="none",col=heat.colors(40), ColSideColors=clab1, cexCol=0.6,cexRow=0.6, main="normalized, year_1" , keysize=1)
+dev.off()
+
+standardize <- function(z) {
+  rowmed <- apply(z, 1, median)
+  rowmad <- apply(z, 1, mad)
+  rv <- sweep(z, 1, rowmed)
+  rv <- sweep(rv, 1, rowmad, "/")
+  return(rv)
+}
+
+rowMads <- apply(norm.1, 1, mad)
+
+#top 1000 variable genes 
+
+ord <- order(rowMads,decreasing=TRUE)
+top1000 <- ord[1:1000]
+ftdexp2 <- norm.1 [top1000, ]
+ftddist2 <- dist(t(standardize(ftdexp2)))
+
+summary(ftddist2) 
+
+ftdcl2 <- hclust(ftddist2)
+ftddism2<-as.matrix(ftddist2)
+
+#top 500 variable genes- 
+top500 <- ord[1:500]
+ftdexp3 <- norm.1 [top500, ]
+ftddist3 <- dist(t(standardize(ftdexp3)))
+
+ftdcl3 <- hclust(ftddist3)
+ftddism3<-as.matrix(ftddist3)
+
+#heatmaps
+pdf("4_clst_heatmap_mostVariable_year1.pdf", width=10,height=10)
+
+heatmap.plus(ftddism2, trace="none",col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main="year_1, Top 1000 Most Variable Genes",   cexRow=0.6,cexCol=0.6, ColSideColors=clab1,  scale="none",keysize=1)
+
+heatmap.plus(ftddism3, col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main="year_1, Top 500 Most Variable Genes ", trace="none",   cexRow=0.6,cexCol=0.6, ColSideColors=clab1, scale="none",keysize=1)
+dev.off()
+
+#---MDS- 
+targets3b= targets3[targets3$year.of.follow.up== "Baseline",]
+targets31= targets3[targets3$year.of.follow.up== "Year_1",]
+
+
+cm1 <- cmdscale(ftddist2, eig=TRUE)
+ 
+pdf("4_MDS_year1.pdf", width=20,height=10)
+par(mfrow=c(1,2))
+myPlot <- function(x, ...)
+plot(x$points, xlab=" Component 1", ylab="Component 2", lwd=4,col=batch1, pch=19, xlim=c(-50,50),...)
+
+myPlot(cm1, main=" data set, Year_1 ")
+chw <- par()$cxy[1]
+text(x=cm1$points[,1]+(0.3*chw),y=cm1$points[,2],main="MDS", lwd=4,labels=colnames(norm.b),adj=0, cex=0.7)
+legend(x="topright",legend=unique(targets31$Batch),col=unique(batch1),fill= unique(batch1), cex=1.2)
+
+myPlot <- function(x, ...)
+plot(x$points, xlab="Component 1", ylab="Component 2", lwd=4,col=time1, pch=19, xlim=c(-50,50),...)
+
+myPlot(cm1, main=" Timepoint, Year_1 ")
+chw <- par()$cxy[1]
+text(x=cm1$points[,1]+(0.3*chw),y=cm1$points[,2],main="MDS", lwd=4,labels=colnames(norm.b),adj=0, cex=0.7)
+legend(x="topright",legend=unique(targets31$year.of.follow.up),col=unique(time1),fill= unique(time1), cex=1.2)
+dev.off()
+
+
+out<-as.data.frame(cbind(Probe=rownames(norm.2),norm.2))
+colnames(out)
+
+out1<-merge(out,annot,by.x="Probe", by.y="ProbeID")
+colnames(out1)
+out2<-out1[,c(1,9:11,2:8,12:35)]
+colnames(out2)
+
+write.csv(out2, "Lincy_normalizedData_year2.csv")
+
+
+rm(out,out1,out2)
+out<-as.data.frame(cbind(Probe=rownames(norm.3),norm.3))
+colnames(out)
+
+out1<-merge(out,annot,by.x="Probe", by.y="ProbeID")
+colnames(out1)
+out2<-out1[,c(1,5:7,2:4,8:31)]
+colnames(out2)
+
+write.csv(out2, "Lincy_normalizedData_year3.csv")
+
+rm(out,out1,out2)
+out<-as.data.frame(cbind(Probe=rownames(norm.4),norm.4))
+colnames(out)
+
+out1<-merge(out,annot,by.x="Probe", by.y="ProbeID")
+colnames(out1)
+out2<-out1[,c(1,7:9,2:6,10:33)]
+colnames(out2)
+
+write.csv(out2, "Lincy_normalizedData_year4.csv")
+
+
+
