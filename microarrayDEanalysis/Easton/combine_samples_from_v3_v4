@@ -1,0 +1,267 @@
+# Loading packages-- 
+
+library (Biobase)
+library(marray)
+library (limma)
+library(RColorBrewer)
+library(MASS)
+library(gplots)
+library(heatmap.plus)
+
+setwd("/home/easton")
+
+###v3
+data3<-read.csv("easton_v3.csv",header=T)
+dim(data3)
+
+det3<-read.csv("Easton_Detsco_platformV3_6sets.csv",header=T)
+dim(det3)
+
+targets<-read.csv("targets_easton_v3_raw.csv",header=T)
+dim(targets)
+
+labls<-targets$SampleName
+
+## disqualified
+Easton 007, 008, 012, 018, 025, 026, 028, 042, 059, 061, 063, 064, 
+066, 074,083, 103, 104, 106, 108, 110, 129, 135, 140, 009, 170, 184, 
+192, 194, 196, 205, 204, 213.
+
+disqua<-c(4,23,2,10,37,60,87,68)
+
+colnames(data3)[aad]
+
+targets<-targets[-disqua,]
+data3d<-data3[,-disqua] 
+det3d<-det3[,-disqua] 
+
+labls<-targets$SampleName
+
+annot3<-read.csv("HumanRef-8_V3_0_R0_11282963_A.csv",header=T)
+dim(annot3)
+rownames(data3d)<-data3d$Probe
+
+data3d.temp<-data3d[,2:149]
+
+colnames(data3d.temp)<-labls
+
+data3da<-as.data.frame(cbind(Probe=rownames(data3d.temp), data3d.temp))
+
+out.data<-merge(data3da, annot3, by.x="Probe", by.y="Probe_Id")
+out.data.out<- out.data[,c(1,160,161,171,2:159,163:170,172:176)]
+
+write.table(out.data.out, "Easton_rawData_platform3_excludedDisqualified.csv",sep=",",row.names=F)
+
+###detection p-value
+rownames(det3d)<-det3d$Probe
+
+det3d.temp<-det3d[,2:149]
+
+det3d.tempp<-1- det3d.temp
+
+colnames(det3d.tempp)<-labls
+
+det3da<-as.data.frame(cbind(Probe=rownames(det3d.tempp), det3d.tempp))
+
+out.det<-merge(det3da, annot3, by.x="Probe", by.y="Probe_Id")
+out.det.out<- out.det[,c(1,160,161,171,2:159,163:170,172:176)]
+
+write.table(out.det.out, "Easton_detectionPval_platform3_excludedDisqualified.csv",sep=",",row.names=F)
+
+####v4
+
+data4<-read.csv("easton_rawData_v4_463samples.csv",header=T)
+dim(data4)
+
+rownames(data4)<-data4$Probe
+data4.temp<-data4[,5:467]
+labls4<-colnames(data4.temp)
+annot4<-data4[,c(1:4,468:491)]
+
+disqua4<-c(8,163)
+colnames(data4.temp)[ disqua4]
+
+disqua4d<- disqua4+4
+colnames(data4)[ disqua4+4]
+data4.out<-data4[,-disqua4d]
+write.table(data4.out, "Easton_rawData_platformV4_excludedDisqualified.csv",sep=",",row.names=F)
+
+
+###lincy
+lincy<-read.csv("Lincy_rawData_47samples.csv",header=T)
+dim(lincy)
+
+rownames(lincy)<-lincy$Probe
+lincy.temp<-lincy[,5:51]
+labls.lincy<-colnames(lincy.temp)
+
+annot.lincy<-lincy[,c(1:4,52:75)]
+
+###
+Lincy det
+s180<-read.csv("detscoP_v4_2010_180_lincy.csv",header=T)
+dim(s180)
+
+s089<-read.csv("detscoP_v4_2011_089_lincy.csv",header=T)
+dim(s089)
+
+s125<-read.csv("detscoP_v4_2011_125_lincy.csv",header=T)
+dim(s125)
+
+s148<-read.csv("detscoP_v4_2011_148_lincy.csv",header=T)
+dim(s148)
+
+s90<-read.csv("detscoP_v4_2015_9090_lincy.csv",header=T)
+dim(s90)
+
+##combine
+s180089<-merge(s180,s089,by.x="Probe", by.y="Probe")
+s180089125<-merge(s180089,s125,by.x="Probe", by.y="Probe")
+s180089125148<-merge(s180089125,s148,by.x="Probe", by.y="Probe")
+s18008912514890<-merge(s180089125148,s90,by.x="Probe", by.y="Probe")
+dim(s18008912514890)
+#47217    48
+
+colnames(s18008912514890)
+write.table(s18008912514890, "Lincy_detscoPval.csv",sep=",",row.names=F)
+
+
+
+aal<-s18008912514890
+rownames(aal)<-aal$Probe
+
+aal.temp<-aal[,2:48]
+colnames(aal.temp)<-labls.lincy
+
+aal.temp0<-as.data.frame(cbind(Probe=rownames(aal.temp), aal.temp))
+lincy.out<-merge(aal.temp0, annot.lincy, by.x="Probe", by.y="Probe")
+lincy.out0<- lincy.out[,c(1,49:51,2:48,52:75)]
+write.table(lincy.out0, "Lincy_detscoPval.csv",sep=",",row.names=F)
+
+###detsco
+s180<-read.csv("detscoP_v4_2010_180_easton.csv",header=T)
+dim(s180)
+
+s089<-read.csv("detscoP_v4_2011_089_easton.csv",header=T)
+dim(s089)
+
+s125<-read.csv("detscoP_v4_2011_125_easton.csv",header=T)
+dim(s125)
+
+s148<-read.csv("detscoP_v4_2011_148_easton.csv",header=T)
+dim(s148)
+
+s189<-read.csv("detscoP_v4_2011_189.csv",header=T)
+dim(s189)
+
+s211<-read.csv("detscoP_v4_2011_211.csv",header=T)
+dim(s211)
+
+s024<-read.csv("detscoP_v4_2012_024.csv",header=T)
+dim(s024)
+
+s067<-read.csv("detscoP_v4_2012_067.csv",header=T)
+dim(s067)
+
+s213<-read.csv("detscoP_v4_2012_213.csv",header=T)
+dim(s213)
+
+s163<-read.csv("detscoP_v4_2013_163.csv",header=T)
+dim(s163)
+
+s031<-read.csv("detscoP_v4_2014_031_exclude.csv",header=T)
+dim(s031)
+
+s078<-read.csv("detscoP_v4_2015_9078.csv",header=T)
+dim(s078)
+
+s90<-read.csv("detscoP_v4_2015_9090_eastonOnly.csv",header=T)
+dim(s90)
+##47309 31
+
+##combine
+s2<-merge(s180,s089,by.x="Probe", by.y="Probe")
+s3<-merge(s2,s125,by.x="Probe", by.y="Probe")
+s4<-merge(s3,s148,by.x="Probe", by.y="Probe")
+s5<-merge(s4,s189,by.x="Probe", by.y="Probe")
+s6<-merge(s5,s211,by.x="Probe", by.y="Probe")
+s7<-merge(s6,s024,by.x="Probe", by.y="Probe")
+s8<-merge(s7,s067,by.x="Probe", by.y="Probe")
+s9<-merge(s8,s213,by.x="Probe", by.y="Probe")
+s10<-merge(s9,s163,by.x="Probe", by.y="Probe")
+s11<-merge(s10,s031,by.x="Probe", by.y="Probe")
+s12<-merge(s11,s078,by.x="Probe", by.y="Probe")
+s13<-merge(s12,s90,by.x="Probe", by.y="Probe")
+
+exd<-c(30,44:47,54,64,71,76,87,154)
+
+colnames(s13)[exd]
+
+det4<-s13[,-exd]
+rownames(det4)<-det4$Probe
+det4.temp<-det4[,2:464]
+colnames(det4.temp)<-labls4
+
+colnames(det4.temp)[ disqua4]
+
+det4.out<-det4.temp[,-disqua4d]
+det4.out0<-as.data.frame(cbind(Probe=rownames(det4.out),det4.out))
+det4.out.out<-merge(det4.out0,annot4,by.x="Probe", by.y="Probe")
+det4.out.out0<- det4.out.out[,c(1,463:465,2:462,466:489)]
+
+write.table(det4.out.out0, "Easton_detectionPval_platformV4_excludedDisqualified.csv",sep=",",row.names=F)
+
+colnames(data4.out)
+
+data4.short<-data4.out[,c(1,5:465)]
+det4.short<- det4.out.out0 [,c(1,5:465)]
+
+lincy.short<-lincy[,c(1,5:51)]
+lincy.det.short<-lincy.out0[,c(1,5:51)]
+
+dat4.lincy<-merge(data4.short, lincy.short, by.x="Probe", by.y="Probe") 
+dim(dat4.lincy)
+
+detsco4.lincy<-merge(det4.short, lincy.det.short, by.x="Probe", by.y="Probe") 
+dim(detsco4.lincy)
+
+##easton, v3, v4
+dat.ev3v4<-merge(out.data.out, data4.short, by.x="Probe", by.y="Probe") 
+dim(dat.ev3v4)
+
+dat.ev3v4.out<- dat.ev3v4[,c(1:152,176:636,153:175)]
+dim(dat.ev3v4.out)
+
+colnames(dat.ev3v4.out)
+write.table(dat.ev3v4.out, "Easton_rawData_intensity_platformV3V4_excludedDisqualified_609samples.csv",sep=",",row.names=F)
+
+det.ev3v4<-merge(out.det.out, det4.short, by.x="Probe", by.y="Probe") 
+dim(det.ev3v4)
+
+det.ev3v4.out<- det.ev3v4[,c(1:152,176:636,153:175)]
+dim(det.ev3v4.out)
+
+colnames(det.ev3v4.out)
+write.table(det.ev3v4.out, "Easton_detectionPval_platformV3V4_excludedDisqualified_609samples.csv",sep=",",row.names=F)
+
+#### easton, lincy
+dat.ev3v4.lincy<-merge(out.data.out, dat4.lincy, by.x="Probe", by.y="Probe") 
+dim(dat.ev3v4.lincy)
+
+dat.ev3v4.out.lincy<- dat.ev3v4.lincy[,c(1:152,176:683,153:175)]
+dim(dat.ev3v4.out.lincy)
+
+colnames(dat.ev3v4.out.lincy)
+write.table(dat.ev3v4.out.lincy, "EastonLincy_rawDataIntensity_platformV3V4_excludedDisqualified.csv",sep=",",row.names=F)
+
+det.ev3v4.lincy<-merge(out.det.out, detsco4.lincy, by.x="Probe", by.y="Probe") 
+dim(det.ev3v4.lincy)
+
+det.ev3v4.out.lincy<- det.ev3v4.lincy[,c(1:152,176:683,153:175)]
+dim(det.ev3v4.out.lincy)
+
+colnames(det.ev3v4.out.lincy)
+write.table(det.ev3v4.out.lincy, "EastonLincy_detectionPval_platformV3V4_excludedDisqualified.csv",sep=",",row.names=F)
+
+
+
