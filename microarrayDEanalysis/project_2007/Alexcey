@@ -1,0 +1,263 @@
+Giovanni Coppola Laboratory, UCLA
+
+Alexey analysis ---Illumina human arrays V2
+Study design:
+
+
+# Loading packages-------------------
+library (Biobase)
+library (limma)
+library(marray)
+library (limma)
+library(RColorBrewer)
+library(MASS)
+library (gtools)
+library (gdata)
+library(gplots)
+
+
+# setting the work directories------------
+
+setwd ("C:/Documents and Settings//illumina/Alexey")
+
+
+# Loading the workspace------------------
+
+#loading the workspace (and packages)
+
+load(paste(my.analysis.dir,"/Alexey.Rdata",sep=""))
+
+
+# Reading the data in[skip if loaded]-------
+
+Samples<-read.delim(file="samples.txt", header=T)
+ROWlabels<-paste(Samples[,1], Samples[,5], sep="-")
+COLlabels<-colnames(Samples)[2:3]
+
+phD <- Samples[,c(2:3)]
+rownames(phD)<-ROWlabels
+ 
+CLabels<-list ("sample","status")
+
+pD<-new("phenoData",pData=phD, varLabels=CLabels)
+
+
+illumina<- read.csv("Alexey_timecourse_gene_profile.csv",skip=7,header=TRUE,row.name=1)
+
+nsampl<-24
+#Set here the number of samples
+
+colnames(illumina)[seq(1,(nsampl*2),2)]
+
+mydata<-illumina[,seq(1,(nsampl*2),2)]
+colnames(mydata)<-ROWlabels
+
+
+colnames(illumina)[seq(1,(nsampl*2),2)+1]
+
+detsco <-illumina[,seq(1,(nsampl*2),2)+1]
+colnames(detsco)<-ROWlabels
+
+
+mydata=log2(mydata)
+ matriz <- as.matrix(mydata)
+
+# loading the illumina human array library file------------------
+
+ill.array <- read.csv(“Human_WG-6.csv", header=T)
+
+
+# signal plots-----------------------------
+
+nsampl<-24
+batch<-as.character(rep(1:4,each=6)+1)
+
+status<-as.character(as.numeric(as.factor(Samples$Status)))
+
+ROWlabels<-as.character(as.character(ROWlabels))
+
+jpeg((paste(my.res.dir, "1_signal%d.jpg",sep="")),width=1300,height=800)
+
+boxplot(as.data.frame(matriz),main="Not normalized",col= batch)
+
+boxplot(as.data.frame(illumina[,seq(1,(nsampl*2),2)+1]),main="Detection scores",names=1:nsampl,col=batch)
+#detection scores
+(illumina[,seq(1,(nsampl*2),2)])
+
+boxplot(log2(as.data.frame(illumina[,seq(1,(nsampl*2),2)+1])),main="Detection scores (log scale)",names=1:nsampl,col=batch)
+#Detection scores  (log2)
+
+par (mfrow = c(2,4))
+for(k in 1:nsampl)
+plot(x=matriz[,k], y=(illumina[,(2*k)]),cex=0.4, main=ROWlabels[k],xlab="log2 signal",ylab="Detection score")
+#detection score vs. log2 signal 
+dev.off()
+
+# signal correlation plots [before normalization]--------------
+
+matcor<-cor(matriz)
+#correlation matrix
+write.xls(matcor,(paste(my.res.dir, "Corr_matrix.xls",sep="")),quote=F)
+
+range(as.vector (matcor))
+
+jpeg((paste(my.res.dir, "hist_signal-correction.jpg",sep="")),width=1300,height=800)
+hist(as.vector(matcor[matcor<1]))
+dev.off()
+#to have histogram distribution
+
+rownames(matcor)<-ROWlabels
+colnames(matcor)<- ROWlabels
+
+jpeg((paste(my.res.dir, "2_ corr.jpg",sep="")),width=1000,height=1000)
+heatmap.2(matcor,trace="none",col=heat.colors(40),ColSideColors=status, RowSideColors=batch, cexCol=1,cexRow=1 ,sub="Color coding - Columns: Status, Rows: Batch",cex.sub=2)
+#to visualize it
+dev.off()
+
+jpeg((paste(my.res.dir, "2_ corr%d.jpg",sep="")),width=1300,height=800)
+
+par (mfrow = c(4,6))
+for(k in 1:5)
+{
+for(j in (k+1):nsampl)
+{
+options(digits=3)
+cor.test(matriz[,k],matriz[,j])->pear
+pear<-format(pear$estimate,digits=4)
+plot(matriz[,k],matriz[,j],xlab=ROWlabels[k],main=paste(ROWlabels[k],ROWlabels[j],sep="-"));mtext(pear, side=1,line=-1,col=2,cex=1.1)
+}
+}
+
+dev.off()
+
+# Between-arrays normalization--------------
+
+normalizeBetweenArrays(matriz,method="quantile")->matrizQ
+
+jpeg((paste(my.res.dir, "3_normalized%d.jpg",sep="")),width=1300,height=800)
+boxplot(as.data.frame(matrizQ),main="Quantile normalization", col= batch)
+#after normalization not too much changes in terms of array signal correlation
+matcorN<-cor(matrizQ)
+heatmap.2(matcorN,trace="none",col=heat.colors(40),ColSideColors=batch, cexCol=1,cexRow=1 ,sub="Color coding - Columns: slide batch",cex.sub=2)
+dev.off()
+
+
+# Creating the exprSet object--------------
+
+eSet <- new("exprSet", exprs=matrizQ, phenoData=pD)
+eSet
+ftdexp<-exprs(eSet)
+
+#---Array clustering based on gene variability-------------------
+
+standardize <- function(z) {
+  rowmed <- apply(z, 1, median)
+  rowmad <- apply(z, 1, mad)
+  rv <- sweep(z, 1, rowmed)
+  rv <- sweep(rv, 1, rowmad, "/")
+  return(rv)
+}
+
+rowMads <- apply(ftdexp, 1, mad)
+
+#dendrograms
+jpeg((paste(my.res.dir, "4_clst.jpg",sep="")),width=1300,height=800)
+plot(ftdcl2, xlab="", sub="", main="Top 1000 variable")
+
+
+par (mfrow = c(1,2))
+plot(ftdcl2, xlab="", sub="", main="Top 1000 variable")
+plot(ftdcl3, xlab="", sub="", main="Top 500 variable")
+dev.off()
+
+#heatmaps
+jpeg((paste(my.res.dir, "4_clst%d.jpg",sep="")),width=1000,height=1000)
+
+heatmap.2(ftddism2, col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main="Array Clustering Based on the Top 1000 Most Variable Genes",trace="none",ColSideColors=status,cexRow=1,cexCol=1,RowSideColors=batch,sub="Color coding - Columns: diagnosis, Rows: slide (batch)",cex.sub=2)
+#the more red, the more distant. 
+heatmap.2(ftddism3, col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main=" Array Clustering Based on the Top 500 Most Variable Genes",trace="none",ColSideColors=status,cexRow=1,cexCol=1,RowSideColors=batch, sub="Color coding - Columns: diagnosis, Rows: slide (batch)",cex.sub=2)
+dev.off()
+
+#---MDS-
+
+cm1 <- cmdscale(ftddist2, eig=TRUE)
+jpeg((paste(my.res.dir, "5_MDS%d.jpg",sep="")),width=1000,height=1000)
+par(mfrow=c(1,1))
+myPlot <- function(x, ...)
+  plot(x$points, xlab="Component 1", ylab="Component 2", pch=19, ...)
+#check the colors in the above command
+myPlot(cm1, main="FTD-quantile")
+chw <- par()$cxy[1]
+text(x=cm1$points[,1]+(0.3*chw),y=cm1$points[,2],main="MDS", labels=labls,adj=0)
+dev.off()
+
+#---LIMMA global analysis-
+
+#linear fitting
+
+TS<- status <- as.character(pData(eSet)[,2]) 
+TS <- factor(TS, levels=unique(TS)) 
+design <- model.matrix(~0+TS) 
+
+colnames(design) <- levels(TS) 
+fit <- lmFit(eSet, design) 
+
+
+#********************************************************#
+#       ---Contrast analysis-------------------     #
+#********************************************************#
+
+1. #ANOVA
+
+cont.anova <- makeContrasts(hNPC1=hNPC1-undiff, hNPC2=hNPC2-undiff,hNPC3=hNPC3-undiff, hNPC4=hNPC4-undiff,
+           hNPC5=hNPC5-undiff, hNPC6=hNPC6-undiff,hNPC7=hNPC7-undiff, hNPC8=hNPC8-undiff,
+           hNPC9=hNPC9-undiff, hNPC10=hNPC10-undiff,hNPC11=hNPC11-undiff, hNPC12=hNPC12-undiff,
+           hNPC13=hNPC13-undiff, hNPC14=hNPC14-undiff,hNPC15=hNPC15-undiff, hNPC16=hNPC16-undiff,  levels=design) 
+
+fit2.anova <- contrasts.fit(fit, cont.anova) 
+fitb<- eBayes(fit2.anova) 
+
+chosen.adjust<-"none"
+chosen.p<-0.001
+current.contrast<-"contrast"
+
+results<-decideTests(fitb,adjust.method=chosen.adjust,p=as.numeric(chosen.p))
+
+length(anovalist)
+
+treat.de<-treat.de[anovalist,]
+
+fitsel.tre2<-merge(treat.de, ill.array, by.x="ID",by.y="Target") 
+colnames(fitsel.tre2)[1]<-"Target"
+merge(fitsel.tre2,mydata2)->fitsel.ratio
+
+#heatmap (top 1000 genes)
+toplot<-fitsel.ratio2[order (fitsel.ratio2$F,decreasing=T),]
+toplot<-toplot[1:1000,]
+coef.toplot<-mydata2[mydata2$Target%in%toplot$Target,2:19]
+
+heatmap(as.matrix(coef.toplot), col=rev(redgreen(52)), main=" FDR 5%",trace="none",cexCol=1 , cex.sub=2 , labRow=as.character(mergedfirst$Symbol)  ,cexRow=0.95, breaks=(c(-4,-3.5,-3,-2.5,-2,-1.5,seq(-1,1,0.05),1.5,2,2.5,3,3.5,4)), ColSideColors=(as.character(batch.ko)))
+
+forgestalt<-cbind(as.character(mergedfirst1$Symbol),mergedfirst1$M)
+forgestalt2<-forgestalt[which(!duplicated(forgestalt[,1])),]
+write.xls(forgestalt2,(paste(my.analysis.dir, "/webgestalt_forgestalt_Dem01.txt",sep="")),quote=F)
+
+#---JPG output-------------------
+
+
+jpeg((paste(my.res.dir, "6_anova_heat.jpg",sep="")),width=1300,height=800)
+heatmap(as.numeric(as.matrix(coef.toplot)), col=rev(redgreen(52)), main="ANOVA - FDR 5%",trace="none",cexCol=1 , cex.sub=2 , cexRow=0.85, breaks=(c(-4,-3.5,-3,-2.5,-2,-1.5,seq(-1,1,0.05),1.5,2,2.5,3,3.5,4)))
+dev.off()
+
+
+#Venn
+Mut1<-paste("Mut1",summary(results)[1,2]+summary(results)[3,2],sep="-") 
+Mut12<-paste("Mut12",summary(results)[1,3]+summary(results)[3,3],sep="-") 
+KE<-paste("KE",summary(results)[1,4]+summary(results)[3,4],sep="-") 
+
+jpeg((paste(my.res.dir, "8_venn.jpg",sep="")),width=800,height=800)
+vennDiagram(results[,2:4],names=c(Mut1,Mut12,KE),main="Factorial analysis, FDR@1%")
+dev.off()
+
+
+
