@@ -1,0 +1,653 @@
+library (Biobase)
+library(marray)
+library (limma)
+library(RColorBrewer)
+library(MASS)
+library(gplots)
+library(heatmap.plus)
+
+
+targets<-read.csv(file="targets.csv", header=T)
+
+labls<- paste(targets$Condition)
+phD <- targets[,c(4,5)]
+rownames(phD)<-labls
+
+metadata<-data.frame(labelDescription=c("SampleID","Condition"), row.names= c("SampleID","Condition"))
+pD<-new("AnnotatedDataFrame",data=phD, varMetadata=metadata)
+
+
+###reading the dataset
+
+data<-read.ilmn (files="2013-069 sample probe profile.txt", expr="AVG_Signal", other.columns="Detection.Pval", sep="\t", quote="\"", verbose=TRUE)
+
+raw_data<-data$E
+colnames(raw_data)
+
+detsco.p<- data$other$Detection.Pval
+colnames(detsco.p)
+
+detsco<-1- detsco.p
+
+colnames(raw_data)<-labls
+colnames(detsco)<-labls
+
+mydata.notlog<- raw_data
+
+mydata=log2(raw_data)
+matriz <- as.matrix(mydata)
+
+dim(mydata)
+
+
+
+annot <- read.csv(file="HumanHT-12_V4_0_R1_15002873_B.csv", header=T)
+dim(annot)
+#  
+
+# signal plots-
+
+nsampl=12
+   
+batch<-rep("lightblue",12)
+
+setwd("E:/STUDY/Cacalano_SiSiJiang/DE")
+
+jpeg("1_signal.jpg", width=1300,height=800)
+par(cex.axis=0.7)
+boxplot(as.data.frame(matriz),main="Signal Not normalized",col=batch, names=labls, las=3,adj=1)
+dev.off()
+
+# signal distribution plots-
+jpeg("1-signal_distribution.jpg", width=1300,height=800)
+
+par(mfrow=c(3,4))
+for (k in 1:12){
+   plot(density(mydata[,k]), main=paste("signal, ", labls[k], sep=""), cex=0.8)
+}
+dev.off()
+
+jpeg("1-detsco-distribution_p.jpg", width=1300,height=800)
+
+par(mfrow=c(3,4))
+for (k in 1:12){
+   plot(density(detsco.p[,k]), main=paste("detection p-value, ", labls[k], sep=""), cex=0.8)
+}
+dev.off()
+
+
+jpeg("1_detsco%d.jpg", width=1300,height=800)
+
+#detection scores
+par(cex.axis=0.7)
+boxplot(as.data.frame(detsco),main="Detection scores",names=labls, col=batch,las=3)
+abline(h=0.9, col="red")
+#abline(h=0.8, col="blue")
+
+par(cex.axis=0.7)
+boxplot(as.data.frame(detsco.p),main="Detection scores p-value",names=labls, col=batch,las=3)
+
+dev.off()
+
+
+thresholds<-c(0.99,0.98,0.97,0.96)
+pdf("1-detsco_stats.pdf",height=9,width=18)
+par (mfrow = c(2,2))
+for (thr in thresholds) {
+apply(detsco,2,function(x)length(which(x>thr)))->detsco.table
+grn<-detsco.table/nrow(mydata)
+#grn<-grn[sort(names(grn))]
+col<-batch
+#col<-as.character(as.numeric(Samples$strain))
+grn.m<-mean(grn)
+grn.sd<- sd(grn)
+sd1p<-grn.m+(grn.sd)
+sd1m<-grn.m-(grn.sd)
+
+sd2p<-grn.m+(grn.sd*2)
+sd2m<-grn.m-(grn.sd*2)
+sd3p<-grn.m+(grn.sd*3)
+sd3m<-grn.m-(grn.sd*3)
+    par(cex.axis=0.5)
+
+plot(x=1:nsampl,y=grn,col=col,pch=19,xaxt="n",main=paste("Detection Threshold = ",thr,sep=""),xlab="",ylab=paste("Fraction Detected at ",thr,sep=""))
+axis(1,at=1:nsampl,labels=names(grn),las=2)
+#legend(x="topright",fill=unique(col),as.character(unique(Samples$Batch[order(Samples$Array)])),cex=0.9,bty="n")
+abline(sd1p,0,lty=2,col=1)
+abline(sd1m,0,lty=2, col=1)
+
+abline(sd2p,0,lty=2,col=3)
+abline(sd2m,0,lty=2, col=3)
+abline(sd3p,0,lty=2, lwd=2,col=2)
+abline(sd3m,0,lty=2,lwd=2,col=2)
+text(sd1m,"1SD",pos=1)
+text(sd3m,"3SD",pos=1)
+text(sd2m,"2SD",pos=1)
+}
+dev.off()
+
+
+#histogram
+
+probes99<-apply(detsco,1,function(x)length(which(x>=0.99)))
+
+pdf("1-detsco_hist.pdf",height=10,width=10)
+hist(probes99,br=nsampl,col="blue", main="Distribution of present genes")
+axis(side=4,at= length(probes99)*seq(0,0.5,0.1),labels= seq(0,50,10))
+dev.off()
+
+
+jpeg("1_signal_detsco.jpg", width=1300,height=800)
+
+par (mfrow = c(3,4))
+for(k in 1:nsampl)
+plot(x=matriz[,k], y=detsco[,k],cex=0.4, main=labls[k],xlab="log2 signal",ylab="Detection score")
+#detection score vs. log2 signal 
+
+dev.off()
+
+# signal correlation plots [before normalization]--------------
+
+matcor<-cor(matriz)
+
+range(as.vector (matcor))
+
+
+range(as.vector (matcor))
+
+#library(heatmap.plus)
+#clab<-cbind(condition, tim)
+
+pdf("2_corr_heatmap_notNorm.pdf", width=10,height=10)
+heatmap.2(matcor, trace="none",scale="none",col=heat.colors(40), cexCol=0.7,cexRow=0.7, main="Clustering, Not normalized",keysize=1)
+dev.off()
+
+
+# signal correlation plots [from network preprocessing]--------------
+
+pdf("2_AIC.pdf", width=13,height=10)
+
+IAC=cor(matriz,use="p")
+cluster1=hclust(as.dist(1-IAC))
+plot(cluster1, main=paste("All samples (no=",dim(IAC)[2],")"))
+dev.off()
+
+
+
+meanIAC=apply(IAC,2,mean)
+sdCorr=sd(meanIAC)
+numbersd=(meanIAC-mean(meanIAC))/sdCorr
+y=length(IAC[1,])
+x=(mean(IAC)*(y^2)-y)/((y^2)-y)
+
+
+pdf("2_sd.pdf",width=10,height=10)
+
+plot(numbersd, type="n", main="all samples", ylab="z-score",) 
+text(numbersd, labels=labls, cex=0.7,col="red")
+#abline(h=-2, col=4)
+abline(h=-3, col=5)
+dev.off()
+
+# Outlier exclusion :
+
+##rm 1 outlier, 1 tech
+removeSamples = match(c("Neuropathic_3", "Neuropathic_4r"), colnames(matriz))
+removeSamples 
+
+matriz.g<-matriz[, -removeSamples]
+targets.g<-targets[-removeSamples,]
+labls.g<-labls[-removeSamples]
+group.g<-group[-removeSamples]
+batch.g<-batch[-removeSamples]
+clab.g<-clab[-removeSamples,]
+pD.g<-pD[-removeSamples]
+
+jpeg("1_signal_rm1outlier_rmtech.jpg", width=1300,height=800)
+par(cex.axis=0.6)
+boxplot(as.data.frame(matriz.g),main="Signal Not normalized,exclude 1 outlier and 1 tech repl",col=batch.g, names=labls.g, las=3,adj=1)
+dev.off()
+
+matcor.g<-cor(matriz.g)
+
+pdf("2_corr_heatmap_notNorm_rm1.pdf", width=10,height=10)
+heatmap.plus(matcor.g,scale="none",col=heat.colors(40), ColSideColors=clab.g, cexCol=0.7,cexRow=0.7, main=" Not normalized, exclude 1 outlier and 1 tech")
+dev.off()
+
+
+
+# Between-arrays normalization--------------
+
+norm<-normalizeBetweenArrays(as.matrix(matriz),method="quantile")
+
+
+jpeg("3_normalized.jpg", width=1300,height=800)
+par(cex.axis=0.7)
+boxplot(as.data.frame(norm),main="Quantile normalization", col= batch,names=labls, las=3)
+dev.off()
+
+
+#after normalization array signal correlation
+
+matcorN<-cor(norm)
+range(matcorN) 
+
+
+pdf("3_corr_heatmap_Norm.pdf", width=10,height=10)
+heatmap.2(matcorN, trace="none",scale="none",col=heat.colors(40), cexCol=0.6,cexRow=0.6, main="normalized" , keysize=1)
+
+dev.off()
+
+
+
+
+# Creating the exprSet object--------------
+
+
+eSet <- new("ExpressionSet", exprs=norm, phenoData=pD)
+eSet	
+ftdexp<-exprs(eSet)
+
+
+#---Array clustering based on gene variability-------------------
+
+
+standardize <- function(z) {
+  rowmed <- apply(z, 1, median)
+  rowmad <- apply(z, 1, mad)
+  rv <- sweep(z, 1, rowmed)
+  rv <- sweep(rv, 1, rowmad, "/")
+  return(rv)
+}
+
+
+rowMads <- apply(ftdexp, 1, mad)
+
+#---top 1000 variable genes-------------------
+
+ord <- order(rowMads,decreasing=TRUE)
+top1000 <- ord[1:1000]
+ftdexp2 <- ftdexp[top1000, ]
+ftddist2 <- dist(t(standardize(ftdexp2)))
+
+summary(ftddist2) 
+
+ftdcl2 <- hclust(ftddist2)
+ftddism2<-as.matrix(ftddist2)
+
+#---top 500 variable genes-------------------
+top500 <- ord[1:500]
+ftdexp3 <- ftdexp[top500, ]
+ftddist3 <- dist(t(standardize(ftdexp3)))
+
+ftdcl3 <- hclust(ftddist3)
+ftddism3<-as.matrix(ftddist3)
+
+#heatmaps
+pdf("4_clst_heatmap_mostVariable.pdf", width=10,height=10)
+
+heatmap.2(ftddism2, trace="none",col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main="Clustering Based on the Top 1000 Most Variable Genes", cexRow=0.7,cexCol=0.7, scale="none",keysize=1)
+
+heatmap.2(ftddism3, col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main="Clustering Based on the Top 500 Most Variable Genes ", trace="none", cexRow=0.7,cexCol=0.7, scale="none",keysize=1)
+dev.off()
+
+#---MDS-------------------
+cm1 <- cmdscale(ftddist2, eig=TRUE)
+samm1 <- sammon(ftddist2, trace=FALSE)
+#?fact.col[fact.col==0]<-1
+pdf("4_MDS.pdf", width=10,height=10)
+
+par(mfrow=c(1,1))
+myPlot <- function(x, ...)
+  plot(x$points, xlab="Component 1", ylab="Component 2", col=batch,lwd=4, pch=19, xlim=c(-80,80),...)
+#check the colors in the above command
+
+myPlot(cm1, main="Condition")
+chw <- par()$cxy[1]
+text(x=cm1$points[,1]+(0.3*chw),y=cm1$points[,2],main="MDS", lwd=4,labels=labls,adj=0, cex=0.7)
+
+#legend(x="topleft",legend=unique(targets$Condition),col=unique(condition),fill= unique(condition), cex=1.2)
+
+dev.off()
+
+#  Ratio 
+#all samples
+all.samples<-as.data.frame(ftdexp)
+
+#ratios for heatmap and ratio output
+#1. Controls, each condition as a control
+contr.creb <-all.samples[,targets$Condition== "CREB" ] 
+contrM.creb <-rowMeans(contr.creb)
+
+contr.crebpt <-all.samples[,targets$Condition== "CREB_PT" ] 
+contrM.crebpt <-rowMeans(contr.crebpt)
+
+contr.tomato <-all.samples[,targets$Condition== "TOMATO" ] 
+contrM.tomato<-rowMeans(contr.tomato)
+
+
+#2. Exp, each condition as a treatment
+
+exp.crebpt <- all.samples[,targets$Condition== "CREB_PT"] 
+exp.tomatopt <- all.samples[,targets$Condition== "TOMATO_PT"] 
+
+exp.creb <- all.samples[,targets$Condition== "CREB"] 
+exp.tomato <- all.samples[,targets$Condition== "TOMATO"] 
+
+#3. Ratios
+
+socs1.28_vs_28<- as.data.frame(ftdexp[,2]-ftdexp[,1])
+colnames(socs1.28_vs_28)<- "socs1.28_vs_28"
+
+socs1.aspc1_vs_aspc1<- as.data.frame(ftdexp[,4]-ftdexp[,3])
+colnames(socs1.aspc1_vs_aspc1)<- "socs1.aspc1_vs_aspc1"
+
+socs3.aspc1_vs_aspc1<- as.data.frame(ftdexp[,5]-ftdexp[,3])
+colnames(socs3.aspc1_vs_aspc1)<- "socs3.aspc1_vs_aspc1"
+
+socs1.bxpc3_vs_bxpc3<- as.data.frame(ftdexp[,7]-ftdexp[,6])
+colnames(socs1.bxpc3_vs_bxpc3)<- "socs1.bxpc3_vs_bxpc3"
+
+socs3.bxpc3_vs_bxpc3<- as.data.frame(ftdexp[,8]-ftdexp[,6])
+colnames(socs3.bxpc3_vs_bxpc3)<- "socs3.bxpc3_vs_bxpc3"
+
+socs1.miapaca_vs_miapaca<- as.data.frame(ftdexp[,10]-ftdexp[,9])
+colnames(socs1.miapaca_vs_miapaca)<- "socs1.miapaca_vs_miapaca"
+
+socs1.pl12_vs_pl12<- as.data.frame(ftdexp[,12]-ftdexp[,11])
+colnames(socs1.pl12_vs_pl12)<- "socs1.pl12_vs_pl12"
+
+
+#exporting all the data
+mydata2<-cbind(Probe=rownames(ftdexp), socs1.28_vs_28, socs1.aspc1_vs_aspc1, 
+socs3.aspc1_vs_aspc1, socs1.bxpc3_vs_bxpc3, socs3.bxpc3_vs_bxpc3, 
+socs1.miapaca_vs_miapaca, socs1.pl12_vs_pl12)
+
+mydata3<-cbind(Probe=rownames(ftdexp),ftdexp)
+
+#colnames(mydata3)[2:length(mydata3)]<- paste(colnames(mydata3)[2:length(mydata3)],"exp",sep=".")
+
+ratio.exp<-merge(mydata2,mydata3,by.x="Probe",by.y="Probe")
+
+out1<-merge(ratio.exp,annot, by.x="Probe",by.y="Probe_Id")
+write.csv(out1, "Ratio_expression.csv")
+
+#-------------Contrast analysis ------
+
+TS<- paste("c",targets$Condition,sep="_")
+
+TS <- factor(TS, levels=unique(TS)) 
+design <- model.matrix(~0+TS)
+
+colnames(design) <- levels(TS) 
+
+fit<- lmFit(eSet, design)
+  
+cont.anova <- makeContrasts(socs1.28_vs_28= c_2.8_SOCS1- c_2.8, 
+socs1.aspc1_vs_aspc1= c_Aspc1_SOCS1 - c_Aspc1,
+socs3.aspc1_vs_aspc1= c_Aspc1_SOCS3 - c_Aspc1,
+socs1.bxpc3_vs_bxpc3= c_Bxpc3_SOCS1- c_Bxpc3,
+socs3.bxpc3_vs_bxpc3= c_Bxpcs_SOCS3- c_Bxpc3,
+socs1.miapaca_vs_miapaca= c_Miapaca_SOCS1- c_Miapaca,
+socs1.pl12_vs_pl12= c_Pl12_SOCS1- c_PL12,
+levels=design) 
+
+
+fit2.anova<- contrasts.fit(fit, cont.anova)
+
+write.fit(fit2.anova,file="dummyadd.xls")
+treat.de<-read.table(file="dummyadd.xls",head=T)
+dim(treat.de)
+
+
+#bayes
+fitb<- eBayes(fit2.anova) 
+
+#selecting the statistical cutoff
+
+decide <- matrix(c("fdr",0.05, "fdr",0.1,"none",0.001,"none",0.005, "none", 0.01),nrow=5,ncol=2,byr=T)
+
+# initialize:
+mysum <- as.list(1:nrow(decide))
+mynum <- 0
+maxmax <- 0
+
+for (test in 1:nrow(decide)){
+    results<-decideTests(fitb, adjust.method=decide[test,1],p=as.numeric(decide[test,2]))
+
+   summary(results) -> mysum[[test]]
+   mynum[test] <-length(which(apply(results,1,function(x)any(x,na.rm=T))))
+   maxmax <- max(c(maxmax, as.vector(mysum[[test]][c(1,3),])))
+}
+
+pdf("5_threshold_selection_add.pdf", width=13,height=6)
+
+par(mfrow=c(1,nrow(decide)))
+for (test in 1:nrow(decide))
+{
+as.numeric(as.vector(mysum[[test]][3,]))->plotMe1
+as.numeric(as.vector(mysum[[test]][1,]))->plotMe2
+maxData = max(plotMe1)
+maxData2 = max(plotMe2)
+
+barplot(plotMe1,horiz=T,col="red",xlim=c(-maxmax,maxmax),
+main=paste("Gene Changes \np<",decide[test,2], ", " , decide[test,1],
+" (" ,mynum[test] ,")",sep=""))->yy
+barplot(-plotMe2,horiz=T,col="green",add=T)->yy
+
+xx<-vector("integer",ncol(mysum[[test]]))
+text(xx,yy,colnames(mysum[[test]]))
+text((plotMe1+10)*0 + .9*maxData,yy+0.1,format(plotMe1,digits=3))
+text((-plotMe2-10)*0 - .9*maxData2,yy+0.1,format(plotMe2,digits=3))
+}
+dev.off()
+
+
+#select here the chosen paramaters
+chosen.adjust<-"none"
+chosen.p<-0.005
+current.contrast<-"contrast"
+
+
+results<-decideTests(fitb,adjust.method=chosen.adjust,p=as.numeric(chosen.p))
+#change p value and adjust method to get a reasonable gene list
+
+
+#plotting the selected threshold for the selected contrasts
+summary(results)->mysum05
+mysum05_no<-length(which(apply(results,1,function(x)any(x,na.rm=T))))
+maxmax<-max(as.vector(mysum05[c(1,3),]))
+
+pdf("5_selected contrast_add.pdf", width=10,height=10)
+
+as.numeric(as.vector(mysum05[3,]))->plotMe1
+as.numeric(as.vector(mysum05[1,]))->plotMe2
+maxData = max(plotMe1)
+maxData2 = max(plotMe2)
+
+barplot(plotMe1,horiz=T,col="red",xlim=c(-maxmax,maxmax), main=paste("Gene Changes, p<0.005 (",mysum05_no,")",sep=""))->yy
+barplot(-plotMe2,horiz=T,col="green",add=T)->yy
+xx<-vector("integer",ncol(mysum05))
+text(xx,yy,colnames(mysum05))
+text((plotMe1+10)*0 + .9*maxmax,yy,format(plotMe1,digits=3))
+text((-plotMe2-10)*0 - .9*maxmax,yy,format(plotMe2,digits=3))
+
+dev.off()
+
+
+write.fit(fitb,file="dummyadd.xls",adjust=chosen.adjust,results=results)
+treat.de<-read.table(file="dummyadd.xls",head=T)
+dim(treat.de)
+#
+
+
+#output for contrasts
+
+myNames<-names(treat.de)
+res.col<- which(regexpr("Res.",myNames)>0)
+
+anovalist<- which(apply(treat.de[,res.col],1,function(x)any(x,na.rm=T)))
+
+length(anovalist)
+
+treat.de.anova<-treat.de[anovalist,]
+dim(treat.de.anova )
+
+
+fitsel.tre2<-merge(treat.de.anova, annot, by.x="ID",by.y="Probe_Id") 
+colnames(fitsel.tre2)[1]<-"Probe"
+
+fitsel.ratio<-merge(fitsel.tre2,ratio.exp, by.x="Probe", by.y="Probe")
+
+myNames <-names(fitsel.ratio)
+#selects the relevant columns for output
+res.col<- which(regexpr("Res.",myNames)>0)
+coefs.col <- which(regexpr("Coef.",myNames)>0)
+ts.col<- coefs.col+length(coefs.col)
+pvals.col <- which(regexpr("p.value.",myNames)>0) 
+endcolumns.start<-length(fitsel.ratio)-(length(mydata2)-2)
+endcolumns.end<-length(fitsel.ratio)
+
+fitsel.ratio2<-cbind(
+Probe= fitsel.ratio$Probe, 
+Accession=fitsel.ratio$Accession, 
+Symbol=fitsel.ratio$Symbol, 
+Definition=fitsel.ratio$Definition,
+fitsel.ratio[,coefs.col],
+fitsel.ratio[,pvals.col],
+F=fitsel.ratio$F,
+F.p.value=fitsel.ratio$F.p.value,
+fitsel.ratio[,res.col],
+fitsel.ratio[,ts.col],
+AverageExpr= fitsel.ratio$A,
+fitsel.ratio[,48:63],
+fitsel.ratio[,21:47]
+)
+
+
+dim(fitsel.ratio2)
+
+
+fitsel.ratio2<-fitsel.ratio2[order(fitsel.ratio2$F,decreasing=T),]
+
+write.csv(fitsel.ratio2,file="significant_geneList_pLess0.005.csv")
+
+###output
+aa<-fitsel.ratio2[fitsel.ratio2$Res.CREB.PT_vs_CREB!=0,]
+dim(aa)##302
+
+write.csv(aa,file="significant_geneList_pLess0.005_CREB.PTvsCREB.csv")
+
+
+bb<-fitsel.ratio2[fitsel.ratio2$Res.TOMATO.PT_vs_TOMATO!=0,]
+dim(bb) ##355
+
+write.csv(bb,file="significant_geneList_pLess0.005_TOMATO.PTvsTOMATO.csv")
+
+
+cc<-fitsel.ratio2[fitsel.ratio2$Res.TOMATO_vs_CREB!=0,]
+dim(cc)##304
+
+write.csv(cc,file="significant_geneList_pLess0.005_TOMOTOvsCREB.csv")
+
+dd<-fitsel.ratio2[fitsel.ratio2$Res.TOMATO.PT_vs_CREB.PT!=0,]
+dim(dd)##755
+
+write.csv(dd,file="significant_geneList_pLess0.005_TOMOTO.PTvsCREB.PT.csv")
+
+
+pdf("6_hist_pvalue.pdf", height=10,width=15)
+par(mfrow=c(2,2))
+for (k in 1:4){
+hist(fitb$p.value[,k], main=colnames(fitb$p.value)[k],xlab="p.value-distribution", br=80,col="skyblue")
+}
+dev.off()
+
+
+pdf("6_anova_heatDiagram.pdf",width=13,height=10)
+par(mfrow=c(1,4))
+par(mar=c(2,3,3,3))
+par(oma=c(2,2,3,2))
+
+for (k in 1:4){
+
+heatDiagram(results,fitb$coef, primary=k, cex=0.6, orientation="portrait", low="green",high="red", ncolors=123, mar=c(1.5,1.5,4.5,3.5))
+}
+dev.off()
+
+#venn
+sumV <- apply(summary(results),2,function(x) x[1]+x[3])
+v <- paste(names(sumV),sumV,sep="-")
+
+pdf("6_venn.pdf", width=21,height=10)
+par(mfrow=c(1,2))
+
+vennDiagram(results[,c(1,2)],names=c( v[1],v[2]),main=" p<0.005", include=c("up","down"),counts.col=c(2,3), cex=1)
+vennDiagram(results[,c(1,2)],names=c( v[1],v[2]),main=" p<0.005", cex=1)
+
+vennDiagram(results[,c(3,4)],names=c( v[3],v[4]),main=" p<0.005", include=c("up","down"),counts.col=c(2,3), cex=1)
+vennDiagram(results[,c(3,4)],names=c( v[3],v[4]),main=" p<0.005", cex=1)
+
+vennDiagram(results[,c(1,3)],names=c( v[1],v[3]),main=" p<0.005", include=c("up","down"),counts.col=c(2,3), cex=1)
+vennDiagram(results[,c(1,3)],names=c( v[1],v[3]),main=" p<0.005", cex=1)
+
+vennDiagram(results[,c(2,4)],names=c( v[2],v[4]),main=" p<0.005", include=c("up","down"),counts.col=c(2,3), cex=1)
+vennDiagram(results[,c(2,4)],names=c( v[2],v[4]),main=" p<0.005", cex=1)
+
+dev.off()
+
+
+#heatmap 
+
+
+toplot<-fitsel.ratio2[order(fitsel.ratio2$F,decreasing=T),24:31]
+rownames(toplot)<-toplot$Probe
+
+
+colu<-c(rep("blue",2), rep("magenta",2), rep("cyan",2), rep("gold4",2))
+
+pdf("7_anova_heatmap.pdf", height=10,width=10)
+
+ 
+heatmap.2(as.matrix(toplot), col=rev(redgreen(64)), main=" p<0.005", trace="none", breaks=(c(-7,-6.5,-6,-5.5,-5,-4.5,-4,-3.5, -3,-2.5,-2,-1.5,seq(-1,1,0.05),1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7 )), cexCol=0.7, ColSideColors=colu,cexRow=0.5, keysize=1, labRow = "")
+	
+heatmap.2(as.matrix(toplot), col=rev(redgreen(64)), main=" p<0.005", trace="none", breaks=(c(-7,-6.5,-6,-5.5,-5,-4.5,-4,-3.5, -3,-2.5,-2,-1.5,seq(-1,1,0.05),1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7 )), cexCol=0.7, cexRow=0.5, keysize=1, dendrogram = "row", ColSideColors=colu,Colv=FALSE, labRow = "")
+
+dev.off()
+
+
+
+#complete list of genes
+fitsel.treAll<-merge(treat.de, annot, by.x="ID",by.y="Probe_Id")  
+colnames(fitsel.treAll)[1]<-"Probe"
+
+fitsel.ratioAll<-merge(fitsel.treAll,ratio.exp)
+
+myNames <-names(fitsel.ratioAll)
+#selects the relevant columns for output
+res.col<- which(regexpr("Res.",myNames)>0)
+coefs.col <- which(regexpr("Coef.",myNames)>0)
+ts.col<- coefs.col+length(coefs.col)
+pvals.col <- which(regexpr("p.value.",myNames)>0) 
+endcolumns.start<-length(fitsel.ratio)-(length(mydata2)-2)
+endcolumns.end<-length(fitsel.ratio)
+
+fitsel.ratioN<-cbind(
+Probe= fitsel.ratioAll$Probe, 
+Accession=fitsel.ratioAll$Accession, 
+Symbol=fitsel.ratioAll$Symbol, 
+Definition=fitsel.ratioAll$Definition,
+fitsel.ratioAll[,coefs.col],
+fitsel.ratioAll[,pvals.col],
+F=fitsel.ratioAll$F,
+F.p.value=fitsel.ratioAll$F.p.value,
+fitsel.ratioAll[,res.col],
+fitsel.ratioAll[,ts.col],
+AverageExpr= fitsel.ratioAll$A,
+fitsel.ratioAll[,48:63],
+fitsel.ratioAll[,21:47]
+)
+
+fitsel.ratioN<-fitsel.ratioN[order(fitsel.ratioN$F,decreasing=T),]
+
+write.csv(fitsel.ratioN, "complete_genelist.csv" )
