@@ -1,0 +1,961 @@
+library (Biobase)
+library(marray)
+library (limma)
+library(RColorBrewer)
+library(MASS)
+library(gplots)
+
+
+# Reading the data in[skip if loaded]-------
+
+Samples<-read.delim(file="samples.txt", header=T)
+
+ROWlabels<-as.character(paste(Samples$Sample, Samples$Status, sep=”_”)) 
+
+
+phD <- Samples[,c(1:3)]
+rownames(phD)<-ROWlabels
+
+CLabels<-list("Array","Sample","condition")
+
+pD<-new("phenoData",pData=phD, varLabels=CLabels)
+
+#new version
+metadata<-data.frame(labelDescription=c(“Array”, “Sample”, “Condition”), row.names=c(“Array”, “Sample”, “Condition”))
+
+pD<-new("AnnotatedDataFrame",data=phD, varMetadata=metadata)
+
+
+###reading the dataset  ##
+
+
+illumina.old <- read.csv(file="Bomar-001_gene_profile.csv", skip=7,header=TRUE,row.name=1)
+
+illumina.new <- read.csv(file= "2008-002_gene_profile.csv", skip=7,header=TRUE,row.name=1)
+
+nsampl<-16
+colnames(illumina.old)[seq(1,(nsampl*4),4)]
+ 
+colnames(illumina.new)[seq(1,(nsampl*4),4)]
+
+mydata.old<-illumina.old[,seq(1,(nsampl*4),4)]
+
+mydata.new<-illumina.new[,seq(1,(nsampl*4),4)]
+
+mydata.raw<-cbind(mydata.new, mydata.old) #new first
+
+colnames(mydata.raw)<-ROWlabels
+
+foxp1<-which(Samples$Condition==”FOXP1”)
+
+mydata<-mydata.raw[, -foxp1]
+#exclude FOXP1 samples
+
+
+#reset
+phD <- phD[-foxp1,]
+Samples<- Samples[-foxp1,]
+
+metadata<-data.frame(labelDescription=c(“Array”, “Sample”, “Condition”), row.names=c(“Array”, “Sample”, “Condition”))
+
+pD<-new("AnnotatedDataFrame",data=phD, varMetadata=metadata)
+
+
+#getting the detection scores
+colnames(illumina.old)[seq(1,(nsampl*4),4)+3]
+#just to check if I am selecting the right columns
+detsco.old<-illumina.old[,seq(1,(nsampl*4),4)+3]
+
+detsco.new<-illumina.new[,seq(1,(nsampl*4),4)+3]
+
+detsco.raw<-cbind(detsco.new, detsco.old) #new first
+
+colnames(detsco.raw)<-ROWlabels
+
+detsco<-detsco.raw[, -foxp1]
+
+
+#getting the sds
+colnames(illumina.old)[seq(1,(nsampl*4),4)+1]
+#just to check if I am selecting the right columns
+sds.old<-illumina.old[,seq(1,(nsampl*4),4)+1]
+
+sds.new<-illumina.new[,seq(1,(nsampl*4),4)+1]
+
+sds.raw<-cbind(sds.new, sds.old) #new first
+
+colnames(sds.raw)<-ROWlabels
+
+sds<-sds.raw[, -foxp1]
+
+
+#getting the bead no
+colnames(illumina.old)[seq(1,(nsampl*4),4)+2]
+#just to check if I am selecting the right columns
+beads.old<-illumina.old[,seq(1,(nsampl*4),4)+2]
+
+beads.new<-illumina.new[,seq(1,(nsampl*4),4)+2]
+
+beads.raw<-cbind(beads.new, beads.old) #new first
+
+colnames(beads.raw)<-ROWlabels
+
+beads<-beads.raw[, -foxp1]
+
+
+mydata.notlog<-mydata
+
+mydata=log2(mydata)
+matriz <- as.matrix(mydata)
+
+
+# loading the illumina human array library file------------------
+
+ill.array <- read.csv(file="HumanRef-8_V2_11223162_B.csv", header=T)
+dim(ill.array)
+
+
+
+# signal plots-----------------------------
+
+nsampl=28  
+
+batch<-as.character(Samples$Batch+2)
+condition<-as.character(as.numeric(as.factor(Samples$Condition)))
+status<- as.character(as.numeric(as.factor(Samples$Status))+5)
+
+jpeg("1_signal.jpg", width=1300,height=800)
+
+boxplot(as.data.frame(matriz),main="Signal Not normalized,  color by Batch \n  1-16 from new data, 17-28 old data (excluding foxp1)",col= batch,names=(1:nsampl))
+dev.off()
+
+# signal distribution plots-
+jpeg("1-signal_distribution.jpg", width=1300,height=1000)
+
+par(mfrow=c(5,6))
+for (k in 1:28){
+   plot(density(mydata[,k]), main=paste(“signal distribution, array”, k, sep=”-“), cex=0.8)
+}
+dev.off()
+
+
+
+jpeg("1_detsco%d.jpg", width=1300,height=800)
+
+#detection scores
+boxplot(as.data.frame(detsco),main="Detection scores \n  1-16 from new data, 17-28 old data (excluding foxp1)",names=1:nsampl)
+
+#det_scores stats
+boxplot (as.data.frame(detsco))->detsco.stats
+det.stats<- as.data.frame(t(detsco.stats$stats))
+colnames(det.stats)<-c("lower whisker","lower hinge", "median", "upper hinge","upper whisker")
+rownames(det.stats)<-paste(Samples$Sample, Samples$Status, sep=”_”)
+det.stats<-cbind(Sample=rownames(det.stats),det.stats)
+write.xls(det.stats,file="detsco_stats.xls")
+
+
+#set the thresholds here
+
+
+thresholds<-c(0.99,0.98,0.97,0.96)
+pdf("detsco_stats.pdf",height=9,width=18)
+par (mfrow = c(2,2))
+for (thr in thresholds) {
+apply(detsco,2,function(x)length(which(x>thr)))->detsco.table
+grn<-detsco.table/nrow(mydata)
+grn<-grn[sort(names(grn))]
+col<-as.character(as.numeric(Samples$Condition[order(Samples$Sample)]))
+grn.m<-mean(grn)
+grn.sd<- sd(grn)
+sd1p<-grn.m+(grn.sd)
+sd1m<-grn.m-(grn.sd)
+
+sd2p<-grn.m+(grn.sd*2)
+sd2m<-grn.m-(grn.sd*2)
+sd3p<-grn.m+(grn.sd*3)
+sd3m<-grn.m-(grn.sd*3)
+plot(x=1:nsampl,y=grn,col=col,pch=19,xaxt="n",main=paste("Detection Threshold = ",thr,sep=""),xlab="",ylab=paste("Fraction Detected at ",thr,sep=""))
+axis(1,at=1:nsampl,labels=names(grn),las=2)
+legend(x="topright",fill=unique(col),as.character(unique(Samples$Condition[order(Samples$Sample)])),cex=0.9,bty="n")
+abline(sd1p,0,lty=2,col=1)
+abline(sd1m,0,lty=2, col=1)
+
+abline(sd2p,0,lty=2,col=3)
+abline(sd2m,0,lty=2, col=3)
+abline(sd3p,0,lty=2, lwd=2,col=2)
+abline(sd3m,0,lty=2,lwd=2,col=2)
+text(sd1m,"1SD",pos=1)
+text(sd3m,"3SD",pos=1)
+text(sd2m,"2SD",pos=1)
+}
+dev.off()
+
+
+#histogram
+
+probes99<-apply(detsco,1,function(x)length(which(x>=0.99)))
+
+pdf("detsco_hist.pdf",height=10,width=10)
+hist(probes99,br=nsampl,col="blue", main="Distribution of present genes")
+axis(side=4,at= length(probes99)*seq(0,0.5,0.1),labels= seq(0,50,10))
+dev.off()
+
+
+jpeg("1_beads%d.jpg", width=1300,height=800)
+
+boxplot(as.data.frame(beads),main="Bead No",names=1:nsampl)
+#bead average no
+
+boxplot(as.data.frame(sds),main="Bead SD",names=1:nsampl)
+#bead standard deviation
+
+#BEAD SD stats
+boxplot (as.data.frame(sds))->detsco.stats
+det.stats<- as.data.frame(t(detsco.stats$stats))
+colnames(det.stats)<-c("lower whisker","lower hinge", "median", "upper hinge","upper whisker")
+rownames(det.stats)<-Samples$Sample
+det.stats<-cbind(Sample=rownames(det.stats),det.stats)
+write.xls(det.stats,file="beadSD_stats.xls")
+
+thresholds<-c("mean","median")
+
+pdf("beadSD_stats.pdf",height=9,width=18)
+par (mfrow = c(2,2))
+for (thr in 1:2) {
+
+apply(sds,2,thresholds[thr])->grn
+grn<-grn[sort(names(grn))]
+col<-as.character(as.numeric(Samples$Condition[order(Samples$Sample)]))
+grn.m<-mean(grn)
+grn.sd<- sd(grn)
+sd1p<-grn.m+(grn.sd)
+sd1m<-grn.m-(grn.sd)
+
+sd2p<-grn.m+(grn.sd*2)
+sd2m<-grn.m-(grn.sd*2)
+sd3p<-grn.m+(grn.sd*3)
+sd3m<-grn.m-(grn.sd*3)
+plot(x=1:nsampl,y=grn,col=col,pch=19,xaxt="n",main=paste("BeadSD (",thresholds[thr],")",sep=""),xlab="",ylab=paste(thresholds[thr]," SD",sep=""))
+axis(1,at=1:nsampl,labels=names(grn),las=2)
+legend(x="topright",fill=unique(col),as.character(unique(Samples$Condition[order(Samples$Sample)])),cex=0.9,bty="n")
+abline(sd1p,0,lty=2,col=1)
+abline(sd1m,0,lty=2, col=1)
+
+abline(sd2p,0,lty=2,col=3)
+abline(sd2m,0,lty=2, col=3)
+abline(sd3p,0,lty=2, lwd=2,col=2)
+abline(sd3m,0,lty=2,lwd=2,col=2)
+text(sd1m,"1SD",pos=1)
+text(sd3m,"3SD",pos=1)
+text(sd2m,"2SD",pos=1)
+apply(log2(sds),2,thresholds[thr])->grn
+grn<-grn[sort(names(grn))]
+col<-as.character(as.numeric(Samples$Condition[order(Samples$Sample)]))
+grn.m<-mean(grn)
+grn.sd<- sd(grn)
+sd1p<-grn.m+(grn.sd)
+sd1m<-grn.m-(grn.sd)
+
+sd2p<-grn.m+(grn.sd*2)
+sd2m<-grn.m-(grn.sd*2)
+sd3p<-grn.m+(grn.sd*3)
+sd3m<-grn.m-(grn.sd*3)
+plot(x=1:nsampl,y=grn,col=col,pch=19,xaxt="n",main=paste("Log2 BeadSD (",thresholds[thr],")",sep=""),xlab="",ylab=paste(thresholds[thr]," SD",sep=""))
+axis(1,at=1:nsampl,labels=names(grn),las=2)
+legend(x="topright",fill=unique(col),as.character(unique(Samples$Condition[order(Samples$Sample)])),cex=0.9,bty="n")
+abline(sd1p,0,lty=2,col=1)
+abline(sd1m,0,lty=2, col=1)
+
+abline(sd2p,0,lty=2,col=3)
+abline(sd2m,0,lty=2, col=3)
+abline(sd3p,0,lty=2, lwd=2,col=2)
+abline(sd3m,0,lty=2,lwd=2,col=2)
+text(sd1m,"1SD",pos=1)
+text(sd3m,"3SD",pos=1)
+text(sd2m,"2SD",pos=1)
+
+}
+dev.off()
+
+
+
+
+jpeg("1_sds%d.jpg", width=1300,height=800)
+
+boxplot(log2(as.data.frame(sds)),main="Bead SD (log scale)",names=1:nsampl)
+#bead standard deviation (log2)
+dev.off()
+
+matriq<-2^matriz
+sds.corr<- sds/matriq
+
+
+
+par (mfrow = c(2,4))
+for(k in 1:nsampl)
+plot(x=matriz[,k], y=sds.corr[,k],cex=0.4, main=ROWlabels[k],xlab="log2 signal",ylab="CV",ylim=c(0,0.14))
+#log2 signal vs. coefficient of variation(SD/mean)
+
+par (mfrow = c(2,4))
+for(k in 1:nsampl)
+plot(x=matriz[,k], y=(log2(sds.corr[,k])),cex=0.4, main=ROWlabels[k],xlab="log2 signal",ylab="log2(CV)")
+#log2 signal vs. log coefficient of variation(SD/mean)
+
+par (mfrow = c(2,4))
+for(k in 1:nsampl)
+plot(x=matriz[,k], y=detsco[,k],cex=0.4, main=ROWlabels[k],xlab="log2 signal",ylab="Detection score")
+#detection score vs. log2 signal 
+
+dev.off()
+
+# signal correlation plots [before normalization]--------------
+
+matcor<-cor(matriz)
+#correlation matrix
+write.xls(matcor,(paste(my.res.dir, "Corr_matrix.xls",sep="")),quote=F)
+
+range(as.vector (matcor))
+# outputs the range
+
+
+
+pdf("2_corr_heatmap_notNorm.pdf", width=10,height=10)
+heatmap.2(matcor,trace="none",col=heat.colors(40),ColSideColors=batch, RowSideColors=condition, cexCol=0.9,cexRow=0.9, main=”Clustering Based on Inter-Array Pearson Coefficient, Not normalized \n Color coding - Columns: batch, Row: condition”)
+dev.off()
+
+jpeg((paste(my.res.dir, "2_ corr%d.jpg",sep="")),width=1300,height=800)
+
+par (mfrow = c(4,6))
+for(k in 1:3)
+{
+for(j in (k+1):nsampl)
+{
+options(digits=3)
+cor.test(matriz[,k],matriz[,j])->pear
+pear<-format(pear$estimate,digits=4)
+plot(matriz[,k],matriz[,j],xlab=ROWlabels[k],main=paste(ROWlabels[k],ROWlabels[j],sep="-"));mtext(pear, side=1,line=-1,col=2,cex=1.1)
+}
+}
+
+dev.off()
+
+# signal correlation plots [from network preprocessing]--------------
+
+IAC=cor(matriz,use="p")
+
+cluster1=hclust(as.dist(1-IAC))
+plot(cluster1, main=paste("All samples (no=",dim(IAC)[2],")"))
+
+ 
+
+meanIAC=apply(IAC,2,mean)
+sdCorr=sd(meanIAC)
+numbersd=(meanIAC-mean(meanIAC))/sdCorr
+y=length(IAC[1,])
+x=(mean(IAC)*(y^2)-y)/((y^2)-y)
+
+
+datout=data.frame(rbind(IAC,meanIAC,numbersd))
+write.table(datout,file="IACs_unnormalized.csv",row.names=T,col.names=T,sep=",")
+
+plot(numbersd)
+identify(numbersd, col=3, cex=1)
+abline(h=-2, col=4)
+abline(h=-3, col=5)
+
+
+SDo<-as.data.frame(cbind(Array=(1:length(numbersd)),Name=names(numbersd),SD=(numbersd)))
+SDo[,3]<-as.numeric(as.character(SDo[,3]))
+SDo<-SDo[order(SDo[,3]),]
+SDoOut<-SDo[SDo[,3]<=(-2),]
+
+
+#another way to find outlier
+dat7<-as.data.frame(t(mydata))
+pdf(file = "clustering-eu.pdf", width = 12, height = 10)
+  sampleDist = dist(dat7)
+  h = hclust(sampleDist)
+  plot(h, main = paste("Sample clustering"))
+dev.off()
+# Outlier Exclusion--------------
+
+
+
+
+#pdf("2_corr_heatmap_notNorm_noOutlier.pdf", width=10,height=10)
+heatmap.2(cor(matriz.g),trace="none",col=heat.colors(40),ColSideColors=batch.g, RowSideColors=condition.g, cexCol=0.9,cexRow=0.9, main=”Clustering, Not normalized, removing GK-8 (Mut125) \n Color coding - Columns: batch, Row: condition”)
+#dev.off()
+
+
+# Between-arrays normalization--------------
+
+
+matrizQ <-normalizeBetweenArrays(matriz,method="quantile")
+
+jpeg("3_normalized.jpg", width=1300,height=800)
+
+boxplot(as.data.frame(matrizQ),main="Quantile normalization", col= batch,names=1:(nsampl))
+
+dev.off()
+
+#after normalization array signal correlation
+matcorN<-cor(matrizQ)
+range(matcorN) 
+
+
+pdf("3_corr_heatmap_Norm.pdf", width=10,height=10)
+heatmap.2(matcorN,trace="none",col=heat.colors(40),ColSideColors= batch, RowSideColors=condition, cexCol=0.9, cexRow=0.9,main="Clustering after normalization \n Color coding - Columns:batch, Row: condition")
+dev.off()
+
+# Creating the exprSet object--------------
+
+eSet <- new("exprSet", exprs=matrizQ, phenoData=pD)
+eSet 
+
+#new version
+eSet <- new("ExpressionSet", exprs=matrizQ, phenoData=pD, annotation=” illuminaHumanv2”)
+eSet
+
+ftdexp<-exprs(eSet)
+
+#---Array clustering based on gene variability-------------------
+
+#functions based on the whole array have been deleted and are present in previous analyses. This because the dist function often produced 'Inf' values. 
+#---------------------------------
+
+
+standardize <- function(z) {
+  rowmed <- apply(z, 1, median)
+  rowmad <- apply(z, 1, mad)
+  rv <- sweep(z, 1, rowmed)
+  rv <- sweep(rv, 1, rowmad, "/")
+  return(rv)
+}
+
+
+rowMads <- apply(ftdexp, 1, mad)
+
+#---top 1000 variable genes-------------------
+
+ord <- order(rowMads,decreasing=TRUE)
+top1000 <- ord[1:1000]
+ftdexp2 <- ftdexp[top1000, ]
+ftddist2 <- dist(t(standardize(ftdexp2)))
+
+summary(ftddist2)
+#  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  6.014  22.590  43.690  37.600  50.810  62.440
+
+ftdcl2 <- hclust(ftddist2)
+#ftdcl2$labels<-labls
+ftddism2<-as.matrix(ftddist2)
+#rownames(ftddism2)<-labls
+#colnames(ftddism2)<-labls
+
+#---top 500 variable genes-------------------
+top500 <- ord[1:500]
+ftdexp3 <- ftdexp[top500, ]
+ftddist3 <- dist(t(standardize(ftdexp3)))
+
+ftdcl3 <- hclust(ftddist3)
+#ftdcl3$labels<-labls
+ftddism3<-as.matrix(ftddist3)
+#rownames(ftddism3)<-labls
+#colnames(ftddism3)<-labls
+
+
+#dendrograms
+jpeg("4_clst_mostVariable_dendrogram%d.jpg", width=1300,height=800)
+
+par (mfrow = c(1,1))
+plot(ftdcl2, xlab="", sub="", main="Top 1000 most variable genes")
+plot(ftdcl3, xlab="", sub="", main="Top 500 most variable genes")
+dev.off()
+
+#heatmaps
+pdf("4_clst_heatmap_mostVariable.pdf", width=12,height=12)
+
+heatmap.2(ftddism2, col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main="Clustering Based on the Top 1000 Most Variable Genes \n Color coding - Columns: batch, Row: condition”,trace="none", ColSideColors=batch,RowSideColors=condition, cexRow=0.9,cexCol=0.9)
+#the more red, the more distant. 
+
+heatmap.2(ftddism3, col=rev(heat.colors(75)), distfun=function(x) as.dist(x), main="Clustering Based on the Top 500 Most Variable Genes \n Color coding - Columns: batch, Row: condition”,trace="none", ColSideColors=batch,RowSideColors=condition, cexRow=0.9,cexCol=0.9)
+#the more red, the more distant. 
+dev.off()
+
+#---MDS-------------------
+
+cm1 <- cmdscale(ftddist2, eig=TRUE)
+samm1 <- sammon(ftddist2, trace=FALSE)
+
+par(mfrow=c(1,1))
+myPlot <- function(x, ...)
+  plot(x$points, xlab="Component 1", ylab="Component 2", pch=19, ...)
+#check the colors in the above command
+
+pdf((paste(my.res.dir, "4_mds.pdf",sep="")),width=10,height=10)
+
+myPlot(cm1, main="MDS plot")
+chw <- par()$cxy[1]
+text(x=cm1$points[,1]+(0.3*chw),y=cm1$points[,2],labels=labls,adj=0)
+
+dev.off()
+
+# ************* Ratio  ************** ##
+#all samples
+all.samples<-as.data.frame(ftdexp)
+
+#ratios for heatmap and ratio output
+#selecting the coefficients for single arrays
+
+#1. Controls
+#new data
+all.contr.wt.n<-all.samples[,Samples$Condition ==”WT” & Samples$Status==”n”]
+all.contrM.wt.n<-rowMeans(all.contr.wt.n)
+
+all.contr.m12.n<-all.samples[,Samples$Condition ==”Mut12” & Samples$Status==”n”]
+all.contrM.m12.n<-rowMeans(all.contr.m12.n)
+
+all.contr.m125.n<-all.samples[,Samples$Condition ==”Mut125” & Samples$Status==”n”]
+all.contrM.m125.n<-rowMeans(all.contr.m125.n)
+
+all.contr.v.n<-all.samples[,Samples$Condition ==”Vector” & Samples$Status==”n”]
+all.contrM.v.n<-rowMeans(all.contr.v.n)
+
+#for old and new
+all.contr.wt.o<-all.samples[,Samples$Condition ==”WT” & Samples$Status==”o”]
+all.contrM.wt.o<-rowMeans(all.contr.wt.o)
+
+all.contr.v.o<-all.samples[,Samples$Condition ==”Vector” & Samples$Status==”o”]
+all.contrM.v.o<-rowMeans(all.contr.v.o)
+
+all.contr.m12.o<-all.samples[,Samples$Condition ==”Mut12” & Samples$Status==”o”]
+all.contrM.m12.o<-rowMeans(all.contr.m12.o)
+
+#all
+all.contr.wt.all<-all.samples[,Samples$Condition ==”WT”]
+all.contrM.wt.all<-rowMeans(all.contr.wt.all)
+
+all.contr.m12.all<-all.samples[,Samples$Condition ==”Mut12”]
+all.contrM.m12.all<-rowMeans(all.contr.m12.all)
+
+all.contr.v.all<-all.samples[,Samples$Condition ==”Vector”]
+all.contrM.v.all<-rowMeans(all.contr.v.all)
+
+
+#2. Exp
+all.exp.v.n<-all.samples[,Samples$Condition ==”Vector” & Samples$Status==”n”]
+all.exp.m12.n<-all.samples[,Samples$Condition ==”Mut12” & Samples$Status==”n”]
+all.exp.m125.n<-all.samples[,Samples$Condition ==”Mut125” & Samples$Status==”n”]
+all.exp.wt.n<-all.samples[,Samples$Condition ==”WT” & Samples$Status==”n”]
+
+all.exp.m12.o<-all.samples[,Samples$Condition ==”Mut12” & Samples$Status==”o”]
+all.exp.wt.o<-all.samples[,Samples$Condition ==”WT” & Samples$Status==”o”]
+
+
+all.exp.m12.all<-all.samples[,Samples$Condition ==”Mut12”]
+all.exp.wt.all<-all.samples[,Samples$Condition ==”WT”]
+
+
+
+#3. Ratios
+#new
+all.coef.WTV.n<-all.exp.wt.n-all.contrM.v.n
+colnames(all.coef.WTV.n)<-paste(colnames(all.coef.WTV.n), “vsVn”, sep=”.”)
+
+all.coef.M12V.n<-all.exp.m12.n-all.contrM.v.n
+colnames(all.coef.M12V.n)<-paste(colnames(all.coef.M12V.n), “vsVn”, sep=”.”)
+
+all.coef.M125V.n<-all.exp.m125.n-all.contrM.v.n
+colnames(all.coef.M125V.n)<-paste(colnames(all.coef.M125V.n), “vsVn”, sep=”.”)
+
+all.coef.M12WT.n<-all.exp.m12.n-all.contrM.wt.n
+colnames(all.coef.M12WT.n)<-paste(colnames(all.coef.M12WT.n), “vsWTn”, sep=”.”)
+
+all.coef.M125WT.n<-all.exp.m125.n-all.contrM.wt.n
+colnames(all.coef.M125WT.n)<-paste(colnames(all.coef.M125WT.n), “vsWTn”, sep=”.”)
+
+all.coef.M125M12.n<-all.exp.m125.n-all.contrM.m12.n
+colnames(all.coef.M125M12.n)<-paste(colnames(all.coef.M125M12.n), “vsM12n”, sep=”.”)
+
+
+
+#old-new
+all.coef.V.no<-all.exp.v.n-all.contrM.v.o
+colnames(all.coef.V.no)<-paste(colnames(all.coef.V.no), “vsVo”, sep=”.”)
+
+all.coef.WT.no<-all.exp.wt.n-all.contrM.wt.o
+colnames(all.coef.WT.no)<-paste(colnames(all.coef.WT.no), “vsWTo”, sep=”.”)
+
+all.coef.M12.no<-all.exp.m12.n-all.contrM.m12.o
+colnames(all.coef.M12.no)<-paste(colnames(all.coef.M12.no), “vsM12o”, sep=”.”)
+
+all.coef.M125.no<-all.exp.m125.n-all.contrM.m12.o
+colnames(all.coef.M125.no)<-paste(colnames(all.coef.M125.no), “vsM12o”, sep=”.”)
+
+#old
+all.coef.WTV.o<-all.exp.wt.o-all.contrM.v.o
+colnames(all.coef.WTV.o)<-paste(colnames(all.coef.WTV.o), “vsVo”, sep=”.”)
+
+all.coef.M12V.o<-all.exp.m12.o-all.contrM.v.o
+colnames(all.coef.M12V.o)<-paste(colnames(all.coef.M12V.o), “vsVo”, sep=”.”)
+
+all.coef.M12WT.o<-all.exp.m12.o-all.contrM.wt.o
+colnames(all.coef.M12WT.o)<-paste(colnames(all.coef.M12WT.o), “vsWTo”, sep=”.”)
+
+#all
+all.coef.WTV.all<-all.exp.wt.all-all.contrM.v.all
+colnames(all.coef.WTV.all)<-paste(colnames(all.coef.WTV.all), “vsVall”, sep=”.”)
+
+all.coef.M12V.all<-all.exp.m12.all-all.contrM.v.all
+colnames(all.coef.M12V.all)<-paste(colnames(all.coef.M12V.all), “vsVall”, sep=”.”)
+
+all.coef.M12WT.all<-all.exp.m12.all-all.contrM.wt.all
+colnames(all.coef.M12WT.all)<-paste(colnames(all.coef.M12WT.all), “vsWTall”, sep=”.”)
+
+
+
+#exporting all the data
+mydata2<-cbind(rownames(all.coef.WTV.n), all.coef.WTV.n, all.coef.M12V.n, all.coef.M125V.n, all.coef.M12WT.n, all.coef.M125WT.n, all.coef.M125M12.n, all.coef.V.no, all.coef.WT.no, all.coef.M12.no, all.coef.M125.no, all.coef.WTV.o, all.coef.M12V.o, all.coef.M12WT.o, all.coef.WTV.all, all.coef.M12V.all, all.coef.M12WT.all)
+
+colnames(mydata2)[1]<-“Target”
+
+
+ill.array.nodup<-ill.array[!duplicated(ill.array$Target),]
+dim(ill.array.nodup)
+
+
+
+my.all.data<- merge(mydata2,ill.array.nodup, by.x="Target",by.y="Target")
+
+mydata3<-cbind(rownames(all.samples),all.samples)
+colnames(mydata3)[1]<-"Target"
+colnames(mydata3)[2:length(mydata3)]<- paste(colnames(mydata3)[2:length(mydata3)],"exp",sep=".")
+
+my.all.data.new<-merge(my.all.data,mydata3,by.x="Target",by.y="Target")
+write.xls(my.all.data.new,"genelists/alldata_ratio.xls",quote=F)
+
+
+
+#-------------Contrast analysis ------
+
+
+#linear fitting
+
+TS<- paste(Samples$Condition, Samples$Status, sep=”.”)
+TS <- factor(TS, levels=unique(TS)) 
+design <- model.matrix(~0+TS)
+
+colnames(design) <- levels(TS) 
+colnames(design)
+# "Vector.n" "WT.n"     "Mut12.n"  "Mut125.n" "Vector.o" "WT.o"     "Mut12.o"
+
+
+fit<- lmFit(eSet, design)
+               
+cont.anova <- makeContrasts(WTvsV.n= WT.n – Vector.n, 
+                   M12vsV.n= Mut12.n – Vector.n,
+                   M125vsV.n= Mut125.n – Vector.n, 
+                   M12vsWT.n= Mut12.n – WT.n,
+                   M125vsWT.n= Mut125.n – WT.n,
+                   M125vsM12.n= Mut125.n – Mut12.n,
+
+                   WTvsV.o= WT.o – Vector.o, 
+                   M12vsV.o= Mut12.o – Vector.o,
+                   M12vsWT.o= Mut12.o – WT.o,
+
+
+                   VnvsVo= Vector.n – Vector.o,
+                   WTnvsWTo= WT.n – WT.o,
+                   M12nvsM12o= Mut12.n – Mut12.o,
+                   M125vsM12o= Mut125.n – Mut12.o,
+
+                         
+                   WTvsV.all=(WT.n + WT.o)/2 -(Vector.n + Vector.n)/2,
+                   M12vsV.all=(Mut12.n + Mut12.o)/2 - (Vector.n + Vector.n)/2,
+                   M12vsWT.all= (Mut12.n + Mut12.o)/2 -(WT.n + WT.o)/2 ,
+
+                   levels=design) 
+
+
+fit2.anova<- contrasts.fit(fit, cont.anova)
+
+#bayes
+fitb<- eBayes(fit2.anova) 
+
+#selecting the statistical cutoff
+
+decide <- matrix(c("fdr",0.01,
+"fdr",0.05,"none",0.001,"none",0.005, “none”, 0.01),nrow=5,ncol=2,byr=T)
+
+# initialize:
+mysum <- as.list(1:nrow(decide))
+mynum <- 0
+maxmax <- 0
+
+for (test in 1:nrow(decide)){
+    results<-decideTests(fitb, adjust.method=decide[test,1],p=as.numeric(decide[test,2]))
+
+   summary(results) -> mysum[[test]]
+   mynum[test] <-length(which(apply(results,1,function(x)any(x,na.rm=T))))
+   maxmax <- max(c(maxmax, as.vector(mysum[[test]][c(1,3),])))
+}
+
+pdf("5_threshold_selection.pdf", width=13,height=6)
+
+par(mfrow=c(1,nrow(decide)))
+for (test in 1:nrow(decide))
+{
+as.numeric(as.vector(mysum[[test]][3,]))->plotMe1
+as.numeric(as.vector(mysum[[test]][1,]))->plotMe2
+maxData = max(plotMe1)
+maxData2 = max(plotMe2)
+
+barplot(plotMe1,horiz=T,col="red",xlim=c(-maxmax,maxmax),
+main=paste("Gene Changes \np<",decide[test,2], ", " , decide[test,1],
+" (" ,mynum[test] ,")",sep=""))->yy
+barplot(-plotMe2,horiz=T,col="green",add=T)->yy
+
+xx<-vector("integer",ncol(mysum[[test]]))
+text(xx,yy,colnames(mysum[[test]]))
+text((plotMe1+10)*0 + .9*maxData,yy+0.1,format(plotMe1,digits=3))
+text((-plotMe2-10)*0 - .9*maxData2,yy+0.1,format(plotMe2,digits=3))
+}
+dev.off()
+
+
+#chosen threshold: FDR 0.01
+
+#select here the chosen paramaters
+chosen.adjust<-"fdr"
+chosen.p<-0.01
+current.contrast<-"contrast"
+
+
+results<-decideTests(fit2.anova,adjust.method=chosen.adjust,p=as.numeric(chosen.p))
+#change p value and adjust method to get a reasonable gene list
+
+
+
+#plotting the selected threshold for the selected contrasts
+summary(results)->mysum05
+mysum05_no<-length(which(apply(results,1,function(x)any(x,na.rm=T))))
+maxmax<-max(as.vector(mysum05[c(1,3),]))
+
+pdf("5_selected contrast.pdf", width=10,height=10)
+
+as.numeric(as.vector(mysum05[3,]))->plotMe1
+as.numeric(as.vector(mysum05[1,]))->plotMe2
+maxData = max(plotMe1)
+maxData2 = max(plotMe2)
+
+barplot(plotMe1,horiz=T,col="red",xlim=c(-maxmax,maxmax), main=paste("Gene Changes @ FDR p<0.01 (",mysum05_no,")",sep=""))->yy
+barplot(-plotMe2,horiz=T,col="green",add=T)->yy
+xx<-vector("integer",ncol(mysum05))
+text(xx,yy,colnames(mysum05))
+text((plotMe1+10)*0 + .9*maxmax,yy,format(plotMe1,digits=3))
+text((-plotMe2-10)*0 - .9*maxmax,yy,format(plotMe2,digits=3))
+
+dev.off()
+
+
+write.fit(fitb,file="genelists/dummy.xls",adjust=chosen.adjust,results=results)
+treat.de<-read.table(file="genelists/dummy.xls",head=T)
+dim(treat.de)
+# 20589    68
+
+#output for contrasts
+
+myNames<-names(treat.de)
+res.col<- which(regexpr("Res.",myNames)>0)
+
+anovalist<- which(apply(treat.de[,res.col],1,function(x)any(x,na.rm=T)))
+
+length(anovalist)
+
+
+treat.de.anova<-treat.de[anovalist,]
+
+fitsel.tre2<-merge(treat.de.anova, ill.array.nodup, by.x="ID",by.y="Target") 
+colnames(fitsel.tre2)[1]<-"Target"
+
+fitsel.ratio<-merge(fitsel.tre2,my.all.data.new)
+
+
+myNames <-names(fitsel.ratio)
+#selects the relevant columns for output
+res.col<- which(regexpr("Res.",myNames)>0)
+coefs.col <- which(regexpr("Coef.",myNames)>0)
+ts.col<- coefs.col+length(coefs.col)
+pvals.col <- which(regexpr("p.value.",myNames)>0) 
+endcolumns.start<-length(fitsel.ratio)-(length(mydata2)-2)
+endcolumns.end<-length(fitsel.ratio)
+
+fitsel.ratio2<-cbind(
+Target= fitsel.ratio$Target, 
+Transcript=fitsel.ratio$Accession, 
+Symbol=fitsel.ratio$Symbol, 
+Definition=fitsel.ratio$Definition,
+fitsel.ratio[,coefs.col],
+fitsel.ratio[,pvals.col],
+F=fitsel.ratio$F,
+F.p.value=fitsel.ratio$F.p.value,
+fitsel.ratio[,res.col],
+fitsel.ratio[,ts.col],
+ProbeSequence=fitsel.ratio$Probe_Sequence,
+Ontology=fitsel.ratio$Ontology,
+Synonym=fitsel.ratio$Synonym,
+fitsel.ratio[,81:184]
+)
+
+dim(fitsel.ratio2)
+
+
+
+fitsel.ratio2<-fitsel.ratio2[order(fitsel.ratio2$F,decreasing=T),]
+
+out.file<-paste(paste(current.contrast,chosen.adjust,chosen.p,sep="_"),"xls",sep=".")
+write.xls(fitsel.ratio2,file=paste("genelists/",out.file,sep=""),quote=F)
+
+
+#Venn
+
+pdf("6_venn.pdf", width=21,height=10)
+par(mfrow=c(1,2))
+v1<-paste("WTvsV.n",summary(results)[1,1]+summary(results)[3,1],sep="-")
+v2<-paste("M12vsV.n",summary(results)[1,2]+summary(results)[3,2],sep="-")
+v3<-paste("M125vsV.n",summary(results)[1,3]+summary(results)[3,3],sep="-")
+v4<-paste("M12vsWT.n",summary(results)[1,4]+summary(results)[3,4],sep="-")
+v5<-paste("M125vsWT.n",summary(results)[1,5]+summary(results)[3,5],sep="-")
+v6<-paste("M125vsM12.n",summary(results)[1,6]+summary(results)[3,6],sep="-")
+
+v7<-paste("WTvsV.o",summary(results)[1,7]+summary(results)[3,7],sep="-")
+v8<-paste("M12vsV.o",summary(results)[1,8]+summary(results)[3,8],sep="-")
+v9<-paste("M12vsWT.o",summary(results)[1,9]+summary(results)[3,9],sep="-")
+
+v10<-paste("new-old.V",summary(results)[1,10]+summary(results)[3,10],sep="-")
+v11<-paste("new-old.WT",summary(results)[1,11]+summary(results)[3,11],sep="-")
+v12<-paste("new-old.M12",summary(results)[1,12]+summary(results)[3,12],sep="-")
+v13<-paste("M125vsM12o",summary(results)[1,13]+summary(results)[3,13],sep="-")
+
+v14<-paste("WTvsV.all",summary(results)[1,14]+summary(results)[3,14],sep="-")
+v15<-paste("M12vsV.all",summary(results)[1,15]+summary(results)[3,15],sep="-")
+v16<-paste("M12vsWT.all",summary(results)[1,16]+summary(results)[3,16],sep="-")
+
+vennDiagram(results[,c(1,7,14)],names=c(v1,v7,v14),main="FDR, p<0.01", include=c("up","down"),counts.col=c(2,3), cex=1)
+vennDiagram(results[,c(1,7,14)],names= c(v1,v7,v14),main="FDR, p<0.01", cex=1)
+
+vennDiagram(results[,c(2,8,15)],names=c(v2,v8,v15),main="FDR, p<0.01", include=c("up","down"),counts.col=c(2,3), cex=1)
+vennDiagram(results[,c(2,8,15)],names= c(v2,v8,v15),main="FDR, p<0.01", cex=1)
+
+vennDiagram(results[,c(4,9,16)],names=c(v4,v9,v16),main="FDR, p<0.01", include=c("up","down"),counts.col=c(2,3), cex=1)
+vennDiagram(results[,c(4,9,16)],names= c(v4,v9,v16),main="FDR, p<0.01", cex=1)
+
+vennDiagram(results[,c(6,13)],names=c(v6,v13),main="FDR, p<0.01", include=c("up","down"),counts.col=c(2,3), cex=1)
+vennDiagram(results[,c(6,13)],names= c(v6,v13),main="FDR, p<0.01", cex=1)
+
+
+dev.off()
+
+
+#heatmap [top1000]
+
+pdf("7_anova_heatmap.pdf", height=12,width=12)
+
+#all together
+col.toUse<-as.character(c(rep(“black”,4), rep(“blue”,4), rep(“brown”,4), rep(“green”,4), rep(“yellow”,4), rep(“pink”,4), rep(“purple”,4), rep(“orange”,4), rep(“salmon”,4), rep(“darkblue”,4), rep(“hotpink”,4), rep(“tan”,4), rep(“turquoise”,4), rep(“darkgreen”,8), rep(“grey”,8), rep(“gold4”,8)))
+#creat color based on contrast
+
+#coef.toplot<-fitsel.ratio2[order(fitsel.ratio2$F,decreasing=T),c(74:149)]
+#toplot<-coef.toplot[1:1000,]
+
+#heatmap.2(as.matrix(toplot), col=rev(redgreen(52)), main="fdr, p<0.01", trace="none", breaks=(c(-4,-3.5,-3,-2.5,-2,-1.5,seq(-1,1,0.05),1.5,2,2.5,3,3.5,4)), ColSideColors=col.toUse, cexCol=0.65)
+
+#new only
+col.toUse.n<-as.character(c(rep(“black”,4), rep(“blue”,4), rep(“brown”,4), rep(“green”,4), rep(“yellow”,4), rep(“pink”,4)))
+#creat color based on contrast
+
+coef.toplot.n<-fitsel.ratio2[order(fitsel.ratio2$F,decreasing=T),c(74:97)]
+colnames(coef.toplot.n)<-c(“WTvsV.a”, “WTvsV.b”, “WTvsV.c”, “WTvsV.d”, “M12vsV.a”, “M12vsV.b”, “M12vsV.c”, “M12vsV.d”, “M125vsV.a”, “M125vsV.b”, “M125vsV.c”, “M125vsV.d”, “M12vsWT.a”, “M12vsWT.b”, “M12vsWT.c”, “M12vsWT.d”, “M125vsWT.a”, “M125vsWT.b”, “M125vsWT.c”, “M125vsWT.d”, “M125vsM12.a”, “M125vsM12.b”, “M125vsM12.c”, “M125vsM12.d”)
+
+toplot.n<-coef.toplot.n[1:1000,]
+
+heatmap.2(as.matrix(toplot.n), col=rev(redgreen(52)), main="Comparisons among new data set, \n @ FDR, p<0.01", trace="none", breaks=(c(-4,-3.5,-3,-2.5,-2,-1.5,seq(-1,1,0.05),1.5,2,2.5,3,3.5,4)), ColSideColors= col.toUse.n, cexCol=0.75)
+
+#new-old
+
+col.toUse.no<- as.character(c(rep(“purple”,4), rep(“orange”,4), rep(“salmon”,4), rep(“darkblue”,4)))
+#creat color based on contrast
+
+coef.toplot.no<-fitsel.ratio2[order(fitsel.ratio2$F,decreasing=T),c(98:113)]
+colnames(coef.toplot.no)<-c(“VnvsVo.a”, “VnvsVo.b”, “VnvsVo.c”, “VnvsVo.d”,”WTnvsWTo.a”, ”WTnvsWTo.b”, ”WTnvsWTo.c”, ”WTnvsWTo.d”, “M12nvsM12o.a”, “M12nvsM12o.b”, “M12nvsM12o.c”, “M12nvsM12o.d”, “M125nvsM12o.a”, “M125nvsM12o.b”, “M125nvsM12o.c”, “M125nvsM12o.d”)
+
+toplot.no<-coef.toplot.no[1:1000,]
+
+heatmap.2(as.matrix(toplot.no), col=rev(redgreen(52)), main="Comparisons between new dataset and old dataset \n @ FDR, p<0.01", trace="none", breaks=(c(-4,-3.5,-3,-2.5,-2,-1.5,seq(-1,1,0.05),1.5,2,2.5,3,3.5,4)), ColSideColors= col.toUse.no, cexCol=0.75)
+
+#old only
+col.toUse.o<- as.character(c(rep(“hotpink”,4), rep(“tan”,4), rep(“turquoise”,4)))
+#creat color based on contrast
+
+coef.toplot.o<-fitsel.ratio2[order(fitsel.ratio2$F,decreasing=T),c(114:125)]
+colnames(coef.toplot.o)<-c(“WTvsV.a”, “WTvsV.b”, “WTvsV.c”, “WTvsV.d”, “M12vsV.a”, “M12vsV.b”, “M12vsV.c”, “M12vsV.d”, “M12vsWT.a”, “M12vsWT.b”, “M12vsWT.c”, “M12vsWT.d”)
+
+toplot.o<-coef.toplot.o[1:1000,]
+
+heatmap.2(as.matrix(toplot.o), col=rev(redgreen(52)), main="Comparisons among old dataset \n @ FDR, p<0.01", trace="none", breaks=(c(-4,-3.5,-3,-2.5,-2,-1.5,seq(-1,1,0.05),1.5,2,2.5,3,3.5,4)), ColSideColors= col.toUse.o, cexCol=0.9)
+
+
+#comparison all
+col.toUse.all<-as.character(c(rep(“darkgreen”,8), rep(“grey”,8), rep(“gold4”,8)))
+#creat color based on contrast
+
+coef.toplot.all<-fitsel.ratio2[order(fitsel.ratio2$F,decreasing=T),c(126:149)]
+colnames(coef.toplot.all)<-c(“WTnvsV.a”, “WTnvsV.b”, “WTnvsV.c”, “WTnvsV.d”, “WTovsV.a”, “WTovsV.b”, “WTovsV.c”, “WTovsV.d”, “M12nvsV.a”, “M12nvsV.b”, “M12nvsV.c”, “M12nvsV.d”,  “M12ovsV.a”, “M12ovsV.b”, “M12ovsV.c”, “M12ovsV.d”,  “M12nvsWT.a”, “M12nvsWT.b”, “M12nvsWT.c”, “M12nvsWT.d”, “M12ovsWT.a”, “M12ovsWT.b”, “M12ovsWT.c”, “M12ovsWT.d”)
+
+
+toplot.all<-coef.toplot.all[1:1000,]
+
+heatmap.2(as.matrix(toplot.all), col=rev(redgreen(52)), main="Comparisons for the combination of new and old datasets \n @FDR, p<0.01", trace="none", breaks=(c(-4,-3.5,-3,-2.5,-2,-1.5,seq(-1,1,0.05),1.5,2,2.5,3,3.5,4)), ColSideColors= col.toUse.all, cexCol=0.9)
+
+dev.off()
+
+
+
+#complete list of genes
+
+fitsel.treAll<-merge(treat.de, ill.array, by.x="ID",by.y="Target") 
+colnames(fitsel.treAll)[1]<-"Target"
+
+fitsel.ratioAll<-merge(fitsel.treAll,my.all.data.new)
+
+myNames <-names(fitsel.ratio)
+#selects the relevant columns for output
+res.col<- which(regexpr("Res.",myNames)>0)
+coefs.col <- which(regexpr("Coef.",myNames)>0)
+ts.col<- coefs.col+length(coefs.col)
+pvals.col <- which(regexpr("p.value.",myNames)>0) 
+endcolumns.start<-length(fitsel.ratio)-(length(mydata2)-2)
+endcolumns.end<-length(fitsel.ratio)
+
+fitsel.ratioN<-cbind(
+Target= fitsel.ratioAll$Target, 
+Transcript=fitsel.ratioAll$Accession, 
+Symbol=fitsel.ratioAll$Symbol, 
+Definition=fitsel.ratioAll$Definition,
+fitsel.ratioAll[,coefs.col],
+fitsel.ratioAll[,pvals.col],
+F=fitsel.ratioAll$F,
+F.p.value=fitsel.ratioAll$F.p.value,
+fitsel.ratioAll[,res.col],
+fitsel.ratioAll[,ts.col],
+ProbeSequence=fitsel.ratioAll$Probe_Sequence,
+Ontology=fitsel.ratioAll$Ontology,
+Synonym=fitsel.ratioAll$Synonym,
+fitsel.ratioAll[,81:184]
+)
+
+
+fitsel.ratioN<-fitsel.ratioN[!duplicated(fitsel.ratioN$Target),]
+
+fitsel.ratioN<-fitsel.ratioN[order(fitsel.ratioN$F,decreasing=T),]
+write.xls(fitsel.ratioN,file=paste("genelists","gena2_3_genelist_all.xls",sep="/"),quote=F)
