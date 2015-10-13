@@ -130,10 +130,6 @@ the average number of beads comprising each beadset in each array (Figure 3).
 > boxplot(as.data.frame(detsco),main="Detection scores",
 names=1:nsampl,col=batch,xlab="Array",ylab="Detection Score",cex=0.8)
 
-
-Figure 1: Boxplots representing the raw, log2-transformed signal in 24 arrays.
-          Colors represent array batches.
-
 > beadno<-mydataRAW[,seq(1,(nsampl*8),8)+7]
 > boxplot(as.data.frame(beadno),main="Bead number per beadset",
 names=1:nsampl,col=batch,xlab="Array",ylab="Number of beads",cex=0.8)
@@ -149,10 +145,6 @@ to cluster arrays and identify technical outliers.
 
 > geno<-as.character(as.numeric(targets$Genotype))
 > treatment<-as.character(as.numeric(targets$Drug))
-
-
-Figure 2: Boxplots representing the distribution of the Illumina detection score
-          in 24 arrays.
 
 > heatmap.2(matcor,trace="none",col=heat.colors(40),ColSideColors=geno,
 RowSideColors=treatment, cexCol=1,cexRow=1,labCol="")
@@ -172,9 +164,6 @@ values show normalized distribution (Figure 5).
 After normalization, we can choose the top most variant genes using the
 median absolute deviation [ref.] and cluster them (Figure 6).
 
-Figure 3: Boxplots representing the distribution of the number of beads com-
-       prising the beadset, for each array.
-
 > labls<-paste (targets[,2], targets[,3], sep="_")
 > standardize <- function(z) {
 rowmed <- apply(z, 1, median)
@@ -190,18 +179,6 @@ return(rv)
 > mydata1000dist<- dist(t(standardize(mydata1000)))
 > heatmap.2(as.matrix(mydata1000dist), col=rev(heat.colors(75)),
   distfun=function(x) as.dist(x),trace="none",ColSideColors=geno,cexRow=1,cexCol=1,RowSideColors=treatment,labCol="")
-
-
-Figure 4: Heatmap and cluster dendrogram representing the correlation matrix
-          of arrays with each other. Each box represents a pearson correlation value.
-          Color coding (top bar) represents the genotype (top), and the treatment (side).
-          Technical replicates tend to cluster together and no outliers are evident.
-
-Figure 5: Boxplots representing the distribution of the Illumina detection score
-          in 24 arrays after quantile normalization. Colors: slide batch
-
-Figure 6: Clustering based on the top 1000 most variant genes. Color coding
-          by genotype (top) and treatment (side bar).
 
 The analysis of differential expression is aimed identifying the differentially
 expressed genes when comparing two or more conditions. First, we store all the
@@ -320,11 +297,6 @@ $ p.value.HCAwt : num 0.03495 0.98285 0.00976 0.07195 0.00001 ...
 $ p.value.HCAko : num 0.08854 0.55758 0.27568 0.00619 0.17245 ...
 $ p.value.HCAwtnotHCAko : num 0.74889 0.68895 0.24524 0.43983 0.00003 ...
 $ p.value.adj.KOvsWT : num 0.99948 0.98415 0.90759 0.95854 0.00948 ...
-
-
-Figure 8: Number of differentially expressed genes at FDR 5%. Red bars:
-          upregulated genes, green bars: downregulated genes.
-
 $ p.value.adj.HCAwt : num 0.31045 0.99418 0.22671 0.38073 0.00414 ...
 $ p.value.adj.HCAko : num 0.39 0.797 0.595 0.235 0.495 ...
 $ p.value.adj.HCAwtnotHCAko: num 0.9999 0.9999 0.9999 0.9999 0.0285 ...
@@ -459,9 +431,3 @@ First, we need to compute the individual ratios
 > HCAko<-paste("HCAko",summary(results)[1,3]+summary(results)[3,3],sep="-")
 > vennDiagram(results[,1:3],names=c(KO,HCAwt,HCAko),main="Contrast analysis, FDR@5%")
 
-Figure 9: Heatmap of differentially expressed genes across all conditions. Genes
-          are in rows and samples are in columns. Shades of red indicate upregulation
-          compared to the control condition, shades of green indicate downregulation.
-          Samples and genes are clustered by similarity (represented by the dendrogram).
-
-Figure 10: Venn Diagram
