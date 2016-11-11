@@ -1,0 +1,67 @@
+
+#(1) alignment
+## Aligner STAR was used for the alignment of fastq files to mouse genome mm9 
+
+## (a) rnaseq_qsub_STAR.sh
+#!/bin/bash
+#$ -S /bin/bash
+#$ -cwd
+#$ -V
+
+ref=$1
+# There needs to be a "Data:" folder that include the input fastqs
+for i in $PWD/Data/*_1.fastq; do nDir=`basename $i _1.fastq`; mkdir $nDir; pushd $nDir; ln -s $i .; end2=`echo $i | sed 's/_1.fastq/_2.fastq/g'`; ln -s $end2 .; qsub qsub_STAR.sh *_1.fastq *_2.fastq $ref; popd; done
+
+
+## (b) qsub_STAR.sh
+#!/bin/bash
+#$ -S /bin/bash
+#$ -cwd
+#$ -pe mpi 8
+#$ -l h_data=3G
+#$ -V
+
+# include full path to input
+end1=$1
+end2=$2
+ref=$3
+
+echo BEGIN STAR alignment `pwd` `date`
+stardirectory/STAR --genomeDir $ref --readFilesIn $end1 $end2 --runThreadN 8
+echo COMPLETE STAR `pwd` `date`
+
+## (c) submit job
+rnaseq_qsub_STAR.sh /genomedirectory/Mouse_mm9
+
+
+##(2) get counts
+
+##htseq-count was used to get read counts
+
+
+for i in `find ./ -name Aligned.out.sam`;do pushd `dirname $i`; qsub getCountsHTSeq.sh /genomedirectory/mm9.gtf
+`dirname $i | xargs -I {} basename {}`;popd;done 
+
+
+# getCountsHTSeq.sh 
+#!/bin/bash
+#$ -S /bin/bash
+#$ -cwd
+#$ -V
+#$ -l h_data=2G
+
+ref=$1
+out=$2
+echo Begin: `date` 1>&2
+echo -e gene'\t'$out > $out.count.txt
+samtools view -Sh Aligned.out.sam | htseq-count -m intersection-nonempty -s 'no' - $ref 2> $out.count.error.log >> $out.count.txt
+echo count table for $sample complete `date` 1>&2
+
+
+
+## (3) combining count.txt files to get final count table
+
+find . -maxdepth 2 -name "*.count.txt" -exec cjoin.awk {} + > metaReadCount.xls
+
+
+
